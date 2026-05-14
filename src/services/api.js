@@ -11,6 +11,22 @@ async function request(path, options = {}) {
 
 export const api = {
   setToken(value) { token = value; },
+  getToken() { return token; },
+  async register(payload) {
+    const res = await request("/api/auth/register", {method: "POST", body: JSON.stringify(payload)});
+    token = res.token;
+    return res;
+  },
+  async login(payload) {
+    const res = await request("/api/auth/login", {method: "POST", body: JSON.stringify(payload)});
+    token = res.token;
+    return res;
+  },
+  async authGoogle(credential) {
+    const res = await request("/api/auth/google", {method: "POST", body: JSON.stringify({credential})});
+    token = res.token;
+    return res;
+  },
   async authTelegram(initData) {
     const res = await request("/api/auth/telegram", {method: "POST", body: JSON.stringify({initData: initData || "dev"})});
     token = res.token;
