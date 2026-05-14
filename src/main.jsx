@@ -1,11 +1,21 @@
-import React, {useEffect, useState} from "react";
+import React, {startTransition, useEffect, useState} from "react";
 import {createRoot} from "react-dom/client";
-import {Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {api} from "./services/api";
+import {AuthScreen} from "./components/AuthScreen";
+import {AppHeader} from "./components/AppHeader";
+import {PortfolioBar} from "./components/PortfolioBar";
+import {TabNav} from "./components/TabNav";
+import {DashboardView} from "./components/DashboardView";
+import {PositionsView} from "./components/PositionsView";
+import {VolatilityView} from "./components/VolatilityView";
+import {EmptyState} from "./components/EmptyState";
+import {PortfolioModal} from "./components/PortfolioModal";
+import {ConfirmModal} from "./components/ConfirmModal";
+import {PositionModal} from "./components/PositionModal";
+import {TransactionModal} from "./components/TransactionModal";
+import {AccountModal} from "./components/AccountModal";
 import "./styles.css";
 
-const money = (v) => `$${Number(v || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`;
-const pct = (v) => `${v > 0 ? "+" : ""}${Number(v || 0).toFixed(1)}%`;
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 function getTelegramInitData() {
@@ -17,32 +27,46 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authBusy, setAuthBusy] = useState(true);
   const [authForm, setAuthForm] = useState({email: "", password: "", firstName: "", lastName: ""});
+  const [telegramLinkCode, setTelegramLinkCode] = useState("");
   const [portfolios, setPortfolios] = useState([]);
   const [portfolioId, setPortfolioId] = useState("");
+  const [rawPositions, setRawPositions] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [equity, setEquity] = useState([]);
   const [volatility, setVolatility] = useState([]);
   const [tab, setTab] = useState("dashboard");
   const [error, setError] = useState("");
+  const [modal, setModal] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [linkSession, setLinkSession] = useState(null);
   const isAuthenticated = Boolean(api.getToken());
+  const telegramInitData = getTelegramInitData();
+  const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
 
   useEffect(() => {
     async function boot() {
+      setAuthBusy(true);
       try {
         window.Telegram?.WebApp?.ready?.();
-        const telegramInitData = getTelegramInitData();
-        if (telegramInitData) {
-          await api.authTelegram(telegramInitData);
+        if (api.getToken()) {
+          const user = await api.getCurrentUser();
+          setCurrentUser(user);
           await loadPortfolios();
         }
-      } catch (e) { setError(String(e.message || e)); }
-      finally { setAuthBusy(false); }
+      } catch (e) {
+        api.setToken("");
+        setCurrentUser(null);
+        setError(String(e.message || e));
+      } finally {
+        setAuthBusy(false);
+      }
     }
     boot();
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated || getTelegramInitData() || !GOOGLE_CLIENT_ID) return;
+    if (isAuthenticated || telegramInitData || !GOOGLE_CLIENT_ID) return;
     let cancelled = false;
 
     async function waitForGoogle() {
@@ -60,7 +84,8 @@ function App() {
           setError("");
           setAuthBusy(true);
           try {
-            await api.authGoogle(response.credential);
+            const authResponse = await api.authGoogle(response.credential);
+            setCurrentUser(authResponse);
             await loadPortfolios();
           } catch (e) {
             setError(String(e.message || e));
@@ -84,39 +109,57 @@ function App() {
 
     waitForGoogle();
     return () => { cancelled = true; };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, telegramInitData]);
+
+  useEffect(() => {
+    if (!portfolioId) return;
+    refreshPortfolioViews(portfolioId).catch((e) => setError(String(e.message || e)));
+  }, [portfolioId]);
+
+  async function loadPortfolios() {
+    const list = await api.getPortfolios();
+    setPortfolios(list);
+    setPortfolioId((current) => {
+      if (list.some((portfolio) => portfolio.id === current)) return current;
+      return list[0]?.id || "";
+    });
+    return list;
+  }
+
+  async function refreshPortfolioViews(id = portfolioId) {
+    if (!id) return;
+    const [nextMetrics, nextEquity, nextVolatility, nextPositions, nextTransactions] = await Promise.all([
+      api.getMetrics(id),
+      api.getEquityCurve(id),
+      api.getVolatility(id),
+      api.getPositions(id),
+      api.getTransactions(id),
+    ]);
+    startTransition(() => {
+      setMetrics(nextMetrics);
+      setEquity(nextEquity);
+      setVolatility(nextVolatility);
+      setRawPositions(nextPositions);
+      setTransactions(nextTransactions);
+    });
+  }
 
   function updateAuthField(key, value) {
     setAuthForm((current) => ({...current, [key]: value}));
   }
-
-  async function loadPortfolios() {
-    const ps = await api.getPortfolios();
-    setPortfolios(ps);
-    setPortfolioId(ps[0]?.id || "");
-    return ps;
-  }
-
-  useEffect(() => {
-    if (!portfolioId) return;
-    async function load() {
-      setMetrics(await api.getMetrics(portfolioId));
-      setEquity(await api.getEquityCurve(portfolioId));
-      setVolatility(await api.getVolatility(portfolioId));
-    }
-    load().catch(e => setError(String(e.message || e)));
-  }, [portfolioId]);
 
   async function submitAuth(event) {
     event.preventDefault();
     setError("");
     setAuthBusy(true);
     try {
+      let authResponse;
       if (authMode === "register") {
-        await api.register(authForm);
+        authResponse = await api.register(authForm);
       } else {
-        await api.login({email: authForm.email, password: authForm.password});
+        authResponse = await api.login({email: authForm.email, password: authForm.password});
       }
+      setCurrentUser(authResponse);
       await loadPortfolios();
     } catch (e) {
       setError(String(e.message || e));
@@ -125,11 +168,16 @@ function App() {
     }
   }
 
-  async function devTelegramLogin() {
+  async function telegramLogin() {
+    if (!telegramInitData) return;
     setError("");
     setAuthBusy(true);
     try {
-      await api.authTelegram("dev");
+      const authResponse = telegramLinkCode.trim()
+        ? await api.linkTelegram(telegramInitData, telegramLinkCode.trim())
+        : await api.authTelegram(telegramInitData);
+      setCurrentUser(authResponse);
+      setTelegramLinkCode("");
       await loadPortfolios();
     } catch (e) {
       setError(String(e.message || e));
@@ -138,88 +186,173 @@ function App() {
     }
   }
 
-  async function createPortfolio() {
-    const name = prompt("Portfolio name?") || "My Portfolio";
-    const portfolio = await api.createPortfolio({name});
-    const ps = [...portfolios, portfolio];
-    setPortfolios(ps);
-    setPortfolioId(portfolio.id);
+  async function createTelegramLinkCode() {
+    setError("");
+    try {
+      const session = await api.createTelegramLinkSession();
+      setLinkSession(session);
+    } catch (e) {
+      setError(String(e.message || e));
+    }
   }
 
-  async function addPosition() {
-    if (!portfolioId) return;
-    const ticker = prompt("Ticker?");
-    if (!ticker) return;
-    await api.createPosition(portfolioId, {ticker, companyName: "", category: "New position", type: "STOCK", targetAllocationPct: 0, includeInAllocation: true, correctionPct: -10, drawdownPlanPct: -20, volatilityPeriod: 360, volatilityInterval: "90"});
-    setMetrics(await api.getMetrics(portfolioId));
+  async function handleCreatePortfolio(payload) {
+    setError("");
+    const created = await api.createPortfolio({name: payload.name});
+    const list = await loadPortfolios();
+    const saved = list.find((portfolio) => portfolio.id === created.id) || created;
+    setPortfolioId(saved.id);
+    setModal(null);
   }
 
-  async function addTransaction() {
+  async function handleRenamePortfolio(payload) {
+    if (!selectedPortfolio) return;
+    setError("");
+    await api.updatePortfolio(selectedPortfolio.id, {...selectedPortfolio, name: payload.name});
+    await loadPortfolios();
+    setModal(null);
+  }
+
+  async function handleDeletePortfolio() {
+    if (!selectedPortfolio) return;
+    setError("");
+    await api.deletePortfolio(selectedPortfolio.id);
+    setMetrics(null);
+    setEquity([]);
+    setVolatility([]);
+    setRawPositions([]);
+    setTransactions([]);
+    const list = await loadPortfolios();
+    setPortfolioId(list[0]?.id || "");
+    setModal(null);
+  }
+
+  async function handleCreatePosition(payload) {
     if (!portfolioId) return;
-    const ticker = prompt("Ticker?");
-    const shares = Number(prompt("Shares?") || 0);
-    const price = Number(prompt("Price?") || 0);
-    if (!ticker) return;
-    await api.createTransaction(portfolioId, {ticker, type: "BUY", date: new Date().toISOString().slice(0,10), shares, price, fees: 0, currency: "USD"});
-    setMetrics(await api.getMetrics(portfolioId));
+    setError("");
+    await api.createPosition(portfolioId, payload);
+    await refreshPortfolioViews(portfolioId);
+    setModal(null);
+  }
+
+  async function handleCreateTransaction(payload) {
+    if (!portfolioId) return;
+    setError("");
+    await api.createTransaction(portfolioId, payload);
+    await refreshPortfolioViews(portfolioId);
+    setModal(null);
+  }
+
+  function logout() {
+    api.setToken("");
+    window.google?.accounts?.id?.disableAutoSelect?.();
+    setCurrentUser(null);
+    setPortfolios([]);
+    setPortfolioId("");
+    setMetrics(null);
+    setEquity([]);
+    setVolatility([]);
+    setRawPositions([]);
+    setTransactions([]);
+    setError("");
+    setAuthBusy(false);
+    setModal(null);
+    setLinkSession(null);
+    setTelegramLinkCode("");
   }
 
   const positions = metrics?.positions || [];
 
   if (!isAuthenticated) {
-    return <div className="auth-shell">
-      <section className="auth-card">
-        <div className="auth-copy">
-          <p className="eyebrow">Investment AI Platform</p>
-          <h1>Use the app in your browser or inside Telegram.</h1>
-          <p>Browser users can sign in with Google or email and password. Telegram users can still enter through the Mini App flow.</p>
-        </div>
-        <div className="auth-switch">
-          <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")} type="button">Log in</button>
-          <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")} type="button">Register</button>
-        </div>
-        <form className="auth-form" onSubmit={submitAuth}>
-          {authMode === "register" && <div className="auth-grid">
-            <input placeholder="First name" value={authForm.firstName} onChange={(e) => updateAuthField("firstName", e.target.value)} />
-            <input placeholder="Last name" value={authForm.lastName} onChange={(e) => updateAuthField("lastName", e.target.value)} />
-          </div>}
-          <input type="email" placeholder="Email" value={authForm.email} onChange={(e) => updateAuthField("email", e.target.value)} required />
-          <input type="password" placeholder="Password" value={authForm.password} onChange={(e) => updateAuthField("password", e.target.value)} required />
-          <button className="primary" disabled={authBusy} type="submit">{authBusy ? "Please wait..." : authMode === "register" ? "Create account" : "Log in"}</button>
-        </form>
-        {GOOGLE_CLIENT_ID
-          ? <div className="google-signin-wrap">
-              <div id="google-signin-button"></div>
-            </div>
-          : <div className="error">Set `VITE_GOOGLE_CLIENT_ID` to enable browser Google login.</div>}
-        <button className="ghost" disabled={authBusy} onClick={devTelegramLogin} type="button">Use Telegram dev login</button>
-        {error && <div className="error">{error}</div>}
-      </section>
-    </div>;
+    return (
+      <AuthScreen
+        authBusy={authBusy}
+        authForm={authForm}
+        authMode={authMode}
+        error={error}
+        googleClientId={GOOGLE_CLIENT_ID}
+        hasTelegramInitData={Boolean(telegramInitData)}
+        onAuthModeChange={setAuthMode}
+        onTelegramLogin={telegramLogin}
+        onFieldChange={updateAuthField}
+        onSubmit={submitAuth}
+        onTelegramLinkCodeChange={setTelegramLinkCode}
+        telegramLinkCode={telegramLinkCode}
+      />
+    );
   }
 
-  return <div className="app">
-    <header><div><h1>Investment AI Platform</h1><p>Browser + Telegram client · API mode</p></div><div><button onClick={createPortfolio}>New Portfolio</button><button disabled={!portfolioId} onClick={addPosition}>Add Position</button><button disabled={!portfolioId} onClick={addTransaction}>Add Transaction</button><button className="ghost" onClick={() => { api.setToken(""); window.google?.accounts?.id?.disableAutoSelect?.(); setPortfolios([]); setPortfolioId(""); setMetrics(null); setEquity([]); setVolatility([]); setError(""); setAuthBusy(false); }}>Log out</button></div></header>
-    {error && <div className="error">{error}</div>}
-    <nav>{portfolios.map(p => <button className={p.id === portfolioId ? "active" : ""} onClick={() => setPortfolioId(p.id)} key={p.id}>{p.name}</button>)}</nav>
-    <nav>{["dashboard","positions","volatility"].map(t => <button className={tab === t ? "active" : ""} onClick={() => setTab(t)} key={t}>{t}</button>)}</nav>
+  return (
+    <div className="app-shell">
+      <div className="app">
+        <AppHeader
+          hasPortfolio={Boolean(selectedPortfolio)}
+          onAccount={() => setModal("account")}
+          onAddPosition={() => setModal("position")}
+          onAddTransaction={() => setModal("transaction")}
+          onCreatePortfolio={() => setModal("create-portfolio")}
+          onLogout={logout}
+        />
 
-    {!portfolios.length && <section className="empty-state"><h2>No portfolios yet</h2><p>Create your first portfolio to start tracking positions, transactions, and analytics.</p><button onClick={createPortfolio}>Create portfolio</button></section>}
-    {tab === "dashboard" && metrics && <main className="grid">
-      <Card title="Portfolio Value" value={money(metrics.totalValue)} />
-      <Card title="Invested" value={money(metrics.invested)} />
-      <Card title="PnL" value={`${money(metrics.pnl)} / ${pct(metrics.pnlPct)}`} />
-      <Card title="Signals" value={`${metrics.activeSignals} active`} />
-      <section className="panel wide"><h2>Capital Curve</h2><ResponsiveContainer width="100%" height={280}><AreaChart data={equity}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="day"/><YAxis tickFormatter={v=>`$${Math.round(v/1000)}K`}/><Tooltip formatter={v=>money(v)}/><Area dataKey="value" strokeWidth={2}/></AreaChart></ResponsiveContainer></section>
-    </main>}
+        {error ? <div className="error">{error}</div> : null}
 
-    {tab === "positions" && <section className="panel"><h2>Positions</h2><Table positions={positions}/></section>}
-    {tab === "volatility" && <section className="panel"><h2>Volatility</h2><ResponsiveContainer width="100%" height={320}><BarChart data={volatility}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="ticker"/><YAxis tickFormatter={v=>`${v}%`}/><Tooltip formatter={v=>`${Number(v).toFixed(1)}%`}/><Bar dataKey="dd"/></BarChart></ResponsiveContainer></section>}
-  </div>;
+        <PortfolioBar
+          portfolioId={portfolioId}
+          portfolios={portfolios}
+          onCreate={() => setModal("create-portfolio")}
+          onDelete={() => setModal("delete-portfolio")}
+          onRename={() => setModal("rename-portfolio")}
+          onSelect={setPortfolioId}
+        />
+
+        <TabNav onChange={setTab} tab={tab} />
+
+        {!portfolios.length ? <EmptyState onCreatePortfolio={() => setModal("create-portfolio")} /> : null}
+        {portfolios.length && tab === "dashboard" ? <DashboardView equity={equity} metrics={metrics} /> : null}
+        {portfolios.length && tab === "positions" ? (
+          <PositionsView
+            onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
+            onDeleteTransaction={(transaction) => setModal({type: "delete-transaction", data: transaction})}
+            onEditPosition={(position) => {
+              const source = rawPositions.find((item) => item.id === position.id) || position;
+              setModal({type: "edit-position", data: source});
+            }}
+            onEditTransaction={(transaction) => setModal({type: "edit-transaction", data: transaction})}
+            positions={positions}
+            transactions={transactions}
+          />
+        ) : null}
+        {portfolios.length && tab === "volatility" ? <VolatilityView volatility={volatility} /> : null}
+      </div>
+
+      {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}
+      {modal === "account" ? <AccountModal currentUser={currentUser} linkSession={linkSession} onClose={() => setModal(null)} onCreateLinkCode={createTelegramLinkCode} /> : null}
+      {modal === "rename-portfolio" && selectedPortfolio ? <PortfolioModal mode="edit" onClose={() => setModal(null)} onSubmit={handleRenamePortfolio} portfolio={selectedPortfolio} /> : null}
+      {modal === "delete-portfolio" && selectedPortfolio ? <ConfirmModal confirmLabel="Delete portfolio" onClose={() => setModal(null)} onConfirm={handleDeletePortfolio} subtitle={`Delete "${selectedPortfolio.name}" together with its positions and transactions?`} title="Delete portfolio" /> : null}
+      {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={rawPositions} /> : null}
+      {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={rawPositions} /> : null}
+      {modal?.type === "edit-position" ? <PositionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
+        await api.updatePosition(portfolioId, payload.id, payload);
+        await refreshPortfolioViews(portfolioId);
+        setModal(null);
+      }} position={modal.data} positions={rawPositions} /> : null}
+      {modal?.type === "delete-position" ? <ConfirmModal confirmLabel="Delete position" onClose={() => setModal(null)} onConfirm={async () => {
+        await api.deletePosition(portfolioId, modal.data.id);
+        await refreshPortfolioViews(portfolioId);
+        setModal(null);
+      }} subtitle={`Archive ${modal.data.ticker} from this portfolio?`} title="Delete position" /> : null}
+      {modal?.type === "edit-transaction" ? <TransactionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
+        await api.updateTransaction(portfolioId, payload.id, payload);
+        await refreshPortfolioViews(portfolioId);
+        setModal(null);
+      }} positions={rawPositions} transaction={modal.data} /> : null}
+      {modal?.type === "delete-transaction" ? <ConfirmModal confirmLabel="Delete transaction" onClose={() => setModal(null)} onConfirm={async () => {
+        await api.deleteTransaction(portfolioId, modal.data.id);
+        await refreshPortfolioViews(portfolioId);
+        setModal(null);
+      }} subtitle={`Delete ${modal.data.type} ${modal.data.ticker} from the transaction history?`} title="Delete transaction" /> : null}
+    </div>
+  );
 }
 
-function Card({title,value}) { return <section className="card"><p>{title}</p><h2>{value}</h2></section>; }
-
-function Table({positions}) { return <div className="table"><table><thead><tr><th>Ticker</th><th>Price</th><th>PnL</th><th>Weight</th><th>Drift</th><th>DD%</th><th>Signal</th></tr></thead><tbody>{positions.map(p=><tr key={p.id}><td><b>{p.ticker}</b><br/><small>{p.company}</small></td><td>${Number(p.price).toFixed(2)}</td><td>{pct(p.pnlPct)}</td><td>{pct(p.weight)} / {pct(p.target)}</td><td>{pct(p.drift)}</td><td>{pct(p.dd)}</td><td><span>{p.signal}</span></td></tr>)}</tbody></table></div>; }
-
-createRoot(document.getElementById("root")).render(<App/>);
+createRoot(document.getElementById("root")).render(<App />);
