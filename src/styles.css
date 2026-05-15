@@ -900,6 +900,12 @@ tbody td small {
   font-size: 18px;
   letter-spacing: -0.04em;
 }
+.risk-grid-note {
+  margin: 2px 0 0;
+  color: #6d7d97;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .risk-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -909,7 +915,7 @@ tbody td small {
   grid-column: span 2;
 }
 .risk-grid-row2 {
-  grid-column: span 3;
+  grid-column: span 2;
 }
 .modal-form label span {
   color: #5c6e8b;
@@ -917,6 +923,28 @@ tbody td small {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.input-unit-wrap {
+  position: relative;
+}
+.input-unit-wrap i {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  color: #7182a0;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.risk-grid input,
+.risk-grid select {
+  min-height: 52px;
+  padding: 14px 50px 14px 16px;
+  border-radius: 18px;
 }
 .checkbox-row {
   display: flex !important;

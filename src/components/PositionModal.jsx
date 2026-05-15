@@ -9,8 +9,9 @@ const DEFAULT_FORM = {
   includeInAllocation: true,
   correctionPct: "-10",
   drawdownPlanPct: "-20",
-  volatilityPeriod: "360",
-  volatilityInterval: "90",
+  peakLookbackMonths: "5",
+  volatilityPeriod: "36",
+  volatilityInterval: "4",
 };
 
 function buildForm(position) {
@@ -23,14 +24,23 @@ function buildForm(position) {
     includeInAllocation: Boolean(position.includeInAllocation),
     correctionPct: String(position.correctionPct ?? position.corr ?? -10),
     drawdownPlanPct: String(position.drawdownPlanPct ?? position.ddPlan ?? -20),
-    volatilityPeriod: String(position.volatilityPeriod ?? 360),
-    volatilityInterval: String(position.volatilityInterval ?? "90"),
+    peakLookbackMonths: String(normalizeMonthsValue(position.peakLookbackMonths, 5)),
+    volatilityPeriod: String(normalizeMonthsValue(position.volatilityPeriod, 36)),
+    volatilityInterval: String(normalizeMonthsValue(position.volatilityInterval, 4)),
   };
 }
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeMonthsValue(value, fallback) {
+  const parsed = toNumber(value, fallback);
+  if (parsed <= 0) return fallback;
+  if (parsed === 150) return 5;
+  if (parsed > 120) return Math.max(1, Math.round(parsed / 30));
+  return parsed;
 }
 
 export function PositionModal({mode = "create", onClose, onSubmit, position, positions = []}) {
@@ -55,6 +65,24 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
     };
   }, [form.includeInAllocation, form.targetAllocationPct, position?.id, positions]);
 
+  const volatilityValidation = useMemo(() => {
+    const period = toNumber(form.volatilityPeriod, 0);
+    const interval = toNumber(form.volatilityInterval, 0);
+    if (period <= 0 || interval <= 0) {
+      return {valid: false, message: "Volatility period and interval must be greater than 0."};
+    }
+    if (interval > period) {
+      return {valid: false, message: "Volatility interval cannot be greater than volatility period."};
+    }
+    if (period % interval !== 0) {
+      return {valid: false, message: "Volatility period must be divisible by volatility interval."};
+    }
+    if ((period / interval) > 12) {
+      return {valid: false, message: "Volatility setup supports up to 12 intervals."};
+    }
+    return {valid: true, message: ""};
+  }, [form.volatilityInterval, form.volatilityPeriod]);
+
   function update(key, value) {
     setForm((current) => ({...current, [key]: value}));
   }
@@ -77,7 +105,7 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!form.ticker.trim() || !allocation.valid) return;
+    if (!form.ticker.trim() || !allocation.valid || !volatilityValidation.valid) return;
     onSubmit({
       id: position?.id,
       ticker: form.ticker.trim().toUpperCase(),
@@ -87,13 +115,14 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
       includeInAllocation: form.includeInAllocation,
       correctionPct: Number(form.correctionPct || 0),
       drawdownPlanPct: Number(form.drawdownPlanPct || 0),
-      volatilityPeriod: Number(form.volatilityPeriod || 360),
-      volatilityInterval: String(form.volatilityInterval || "90"),
+      peakLookbackMonths: Number(form.peakLookbackMonths || 5),
+      volatilityPeriod: Number(form.volatilityPeriod || 36),
+      volatilityInterval: Number(form.volatilityInterval || 4),
     });
   }
 
   return (
-    <ModalSheet title={mode === "edit" ? "Position settings" : "Position setup"} subtitle={mode === "edit" ? "Refine allocation and thresholds for an existing holding." : "Add a position with its target allocation and correction thresholds."} onClose={onClose}>
+    <ModalSheet title={mode === "edit" ? "Position settings" : "Position setup"} subtitle={mode === "edit" ? "Refine allocation, peak lookback, and risk thresholds for an existing holding." : "Add a position with its target allocation, peak lookback, and correction thresholds."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
         <div className="modal-section modal-actions-wide">
           <div className="modal-section-heading">
@@ -124,34 +153,57 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
           <div className="modal-section-heading">
             <p className="modal-kicker">Risk settings</p>
             <h4>Target and volatility controls</h4>
+            <p className="risk-grid-note">Set when signals should trigger and how far back risk should be measured.</p>
           </div>
           <div className="risk-grid">
             <label className="risk-grid-row1">
-              <span>Target %</span>
-              <input inputMode="decimal" value={form.targetAllocationPct} onChange={(e) => update("targetAllocationPct", e.target.value)} />
+              <span>Target allocation</span>
+              <div className="input-unit-wrap">
+                <input inputMode="decimal" value={form.targetAllocationPct} onChange={(e) => update("targetAllocationPct", e.target.value)} />
+                <i>%</i>
+              </div>
             </label>
             <label className="risk-grid-row1">
-              <span>Correction %</span>
-              <input inputMode="decimal" value={form.correctionPct} onChange={(e) => update("correctionPct", e.target.value)} />
+              <span>Correction trigger</span>
+              <div className="input-unit-wrap">
+                <input inputMode="decimal" value={form.correctionPct} onChange={(e) => update("correctionPct", e.target.value)} />
+                <i>%</i>
+              </div>
             </label>
             <label className="risk-grid-row1">
-              <span>Drawdown plan %</span>
-              <input inputMode="decimal" value={form.drawdownPlanPct} onChange={(e) => update("drawdownPlanPct", e.target.value)} />
+              <span>Drawdown trigger</span>
+              <div className="input-unit-wrap">
+                <input inputMode="decimal" value={form.drawdownPlanPct} onChange={(e) => update("drawdownPlanPct", e.target.value)} />
+                <i>%</i>
+              </div>
             </label>
             <label className="risk-grid-row2">
-              <span>Volatility period days</span>
-              <input inputMode="numeric" value={form.volatilityPeriod} onChange={(e) => update("volatilityPeriod", e.target.value)} />
+              <span>Peak window</span>
+              <div className="input-unit-wrap">
+                <input inputMode="numeric" value={form.peakLookbackMonths} onChange={(e) => update("peakLookbackMonths", e.target.value)} />
+                <i>mo</i>
+              </div>
             </label>
             <label className="risk-grid-row2">
-              <span>Volatility interval</span>
-              <select value={form.volatilityInterval} onChange={(e) => update("volatilityInterval", e.target.value)}>
-                <option value="30">30</option>
-                <option value="60">60</option>
-                <option value="90">90</option>
-                <option value="120">120</option>
-                <option value="180">180</option>
-                <option value="360">360</option>
-              </select>
+              <span>Volatility window</span>
+              <div className="input-unit-wrap">
+                <input inputMode="numeric" value={form.volatilityPeriod} onChange={(e) => update("volatilityPeriod", e.target.value)} />
+                <i>mo</i>
+              </div>
+            </label>
+            <label className="risk-grid-row2">
+              <span>Step size</span>
+              <div className="input-unit-wrap">
+                <select value={form.volatilityInterval} onChange={(e) => update("volatilityInterval", e.target.value)}>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="6">6</option>
+                <option value="12">12</option>
+                </select>
+                <i>mo</i>
+              </div>
             </label>
           </div>
         </div>
@@ -195,9 +247,14 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
             Save is disabled until all included target allocations sum to exactly 100%.
           </div>
         ) : null}
+        {!volatilityValidation.valid ? (
+          <div className="validation-banner modal-actions-wide">
+            {volatilityValidation.message}
+          </div>
+        ) : null}
         <div className="modal-actions modal-actions-wide">
           <button className="ghost" onClick={onClose} type="button">Cancel</button>
-          <button className="primary" disabled={!allocation.valid} type="submit">{mode === "edit" ? "Save changes" : "Save position"}</button>
+          <button className="primary" disabled={!allocation.valid || !volatilityValidation.valid} type="submit">{mode === "edit" ? "Save changes" : "Save position"}</button>
         </div>
       </form>
     </ModalSheet>
