@@ -65,12 +65,12 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 .app-heading h1 {
-  margin: 10px 0 0;
-  font-size: 58px;
-  line-height: 0.95;
+  margin: 6px 0 0;
+  font-size: 40px;
+  line-height: 0.98;
   letter-spacing: -0.05em;
 }
 .header-actions {
@@ -95,7 +95,7 @@ button {
 }
 .action-button,
 .toolbar-button {
-  padding: 14px 20px;
+  padding: 12px 18px;
   box-shadow: var(--shadow-soft);
   font-weight: 700;
 }
@@ -143,9 +143,9 @@ button {
   box-shadow: var(--shadow);
 }
 .portfolio-bar {
-  padding: 24px;
-  border-radius: var(--radius-xl);
-  margin-bottom: 20px;
+  padding: 18px;
+  border-radius: 28px;
+  margin-bottom: 18px;
 }
 .portfolio-bar-top,
 .panel-heading {
@@ -156,9 +156,15 @@ button {
 }
 .portfolio-bar-top h2,
 .panel-heading h2 {
-  margin: 8px 0 0;
-  font-size: 28px;
+  margin: 4px 0 0;
+  font-size: 20px;
   letter-spacing: -0.03em;
+}
+.panel-copy {
+  margin: 10px 0 0;
+  color: #62738f;
+  font-size: 14px;
+  line-height: 1.45;
 }
 .portfolio-toolbar {
   display: flex;
@@ -181,8 +187,8 @@ button {
   display: flex;
   gap: 12px;
   overflow: auto;
-  padding: 10px 6px 14px;
-  margin: 10px -6px -14px;
+  padding: 4px 4px 10px;
+  margin: 8px -4px 0;
   scroll-snap-type: x proximity;
 }
 .portfolio-chip {
@@ -190,16 +196,18 @@ button {
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  min-width: 180px;
-  padding: 16px 18px;
+  min-width: 150px;
+  padding: 14px 16px;
   background: #fff;
   border: 1px solid transparent;
   box-shadow: var(--shadow-soft);
   color: var(--ink);
   scroll-snap-align: start;
+  border-radius: 20px;
 }
 .portfolio-chip span {
   font-weight: 700;
+  font-size: 15px;
 }
 .portfolio-chip small {
   font-size: 10px;
@@ -213,6 +221,32 @@ button {
 }
 .portfolio-chip.active small {
   color: #d7e6ff;
+}
+.portfolio-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-top: 12px;
+}
+.portfolio-create-row input {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  border: 1px solid #cad7ea;
+  background: #fbfdff;
+  color: var(--ink);
+}
+.portfolio-create-button {
+  min-height: 56px;
+  padding: 0 24px;
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  border-radius: 20px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
 }
 
 .tab-nav {
@@ -236,6 +270,9 @@ button {
     0 0 0 2px #5e98ee inset,
     var(--shadow-soft);
 }
+.tab-nav-mobile {
+  display: none;
+}
 
 .dashboard-layout {
   display: grid;
@@ -248,63 +285,96 @@ button {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-.overview-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 20px;
-}
-.overview-strip div {
-  padding: 16px 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(18, 48, 95, 0.07);
-}
-.overview-strip span {
-  display: block;
-  color: #72829d;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-.overview-strip strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 24px;
-  letter-spacing: -0.04em;
 }
 .metric-card {
-  padding: 20px 22px;
-  border-radius: 26px;
+  position: relative;
+  padding: 16px 18px;
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
+  background: #fff;
+  min-height: 150px;
+}
+.metric-card-blue {
+  background: #edf4ff;
+}
+.metric-card-green {
+  background: #eafaf2;
+}
+.metric-card-amber {
+  background: #fff8df;
 }
 .metric-card p {
   margin: 0;
-  color: #637392;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 11px;
-  font-weight: 700;
+  color: #5f7292;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .metric-card h3 {
-  margin: 12px 0 6px;
-  font-size: 34px;
+  margin: 20px 0 10px;
+  font-size: 28px;
   letter-spacing: -0.05em;
+  line-height: 1.05;
 }
 .metric-card span {
   color: #5f6f8b;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+}
+.metric-card small {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #6f7f99;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .panel,
 .empty-state {
-  border-radius: var(--radius-xl);
-  padding: 24px 28px;
+  border-radius: 28px;
+  padding: 20px 22px;
 }
 .chart-panel {
-  padding-bottom: 10px;
+  padding-bottom: 12px;
+}
+.chart-panel .recharts-cartesian-axis-tick-value {
+  fill: #6a7b97;
+  font-size: 11px;
+}
+.chart-panel .recharts-tooltip-wrapper {
+  outline: none;
+}
+.chart-tooltip {
+  display: grid;
+  gap: 10px;
+  min-width: 164px;
+  padding: 14px 16px;
+  border: 1px solid rgba(18, 48, 95, 0.12);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 30px rgba(18, 48, 95, 0.12);
+}
+.chart-tooltip strong {
+  color: #13213d;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.chart-tooltip span {
+  color: #2f7cc0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.panel-heading + .table-wrap,
+.panel-heading + .mobile-list {
+  margin-top: 18px;
 }
 
 .empty-state {
@@ -313,13 +383,13 @@ button {
 }
 .empty-state h2 {
   margin: 0;
-  font-size: 44px;
+  font-size: 34px;
   letter-spacing: -0.05em;
 }
 .empty-state p {
   margin: 0;
   max-width: 760px;
-  font-size: 27px;
+  font-size: 18px;
   line-height: 1.3;
   color: #34445f;
 }
@@ -400,9 +470,9 @@ tbody td small {
 .signal-pill {
   display: inline-flex;
   align-items: center;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -456,10 +526,16 @@ tbody td small {
   place-items: center;
   padding: 24px;
 }
+.auth-shell-telegram {
+  padding: 18px;
+}
 .auth-card {
   width: min(960px, 100%);
   border-radius: 36px;
   padding: 22px;
+}
+.auth-card-telegram {
+  width: min(520px, 100%);
 }
 .auth-layout {
   display: grid;
@@ -476,69 +552,54 @@ tbody td small {
 .auth-hero h1 {
   margin: 0;
   /* max-width:12ch; */
-  font-size: 36px;
+  font-size: 32px;
   line-height: 0.96;
   letter-spacing: -0.06em;
 }
 .auth-copy {
   display: grid;
   align-content: start;
-  gap: 0;
+  gap: 16px;
   padding: 0;
 }
 .auth-copy p {
   margin: 0;
   color: #4f5f79;
-  max-width: 30ch;
-  font-size: 18px;
+  max-width: 32ch;
+  font-size: 16px;
   line-height: 1.5;
 }
-.auth-summary-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 24px;
-  max-width: 35ch;
+.auth-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 38rem;
 }
-.auth-feature {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-  padding: 16px 18px;
-  border-radius: 24px;
-  border: 1px solid rgba(18, 48, 95, 0.1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 250, 255, 0.82));
-  box-shadow: 0 14px 30px rgba(18, 48, 95, 0.06);
-}
-.auth-feature-primary {
-  border-color: rgba(43, 99, 179, 0.2);
-  box-shadow: 0 16px 38px rgba(18, 48, 95, 0.1);
-}
-.auth-feature-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: #13213d;
-  color: #fff;
-  font-size: 13px;
+.auth-badges span {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  background: rgba(255, 255, 255, 0.84);
+  color: #52647f;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
 }
-.auth-feature-primary .auth-feature-mark {
-  background: linear-gradient(135deg, #12305f, #2b63b3);
+.auth-note-card {
+  display: grid;
+  gap: 8px;
+  max-width: 35ch;
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.86));
+  box-shadow: 0 14px 28px rgba(18, 48, 95, 0.06);
 }
-.auth-feature strong {
-  display: block;
-  margin-top: 2px;
-  color: #13213d;
-  font-size: 19px;
+.auth-note-card strong {
+  font-size: 18px;
   letter-spacing: -0.03em;
 }
-.auth-feature span {
-  display: block;
-  margin-top: 6px;
+.auth-note-card span {
   color: #5a6b87;
   font-size: 14px;
   line-height: 1.45;
@@ -556,19 +617,19 @@ tbody td small {
 .auth-google-primary {
   display: grid;
   gap: 10px;
-  padding: 18px;
+  padding: 16px 18px;
   border: 1px solid #d6e2f2;
   border-radius: 24px;
   background: linear-gradient(180deg, #ffffff, #f8fbff);
 }
 .auth-google-heading h2 {
   margin: 6px 0 4px;
-  font-size: 24px;
+  font-size: 20px;
   letter-spacing: -0.04em;
 }
 .auth-google-heading span {
   color: #62738f;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.4;
 }
 .auth-telegram-panel {
@@ -579,10 +640,29 @@ tbody td small {
   border: 1px solid rgba(18, 48, 95, 0.08);
   background: linear-gradient(180deg, #f8fbff, #ffffff);
 }
+.auth-telegram-direct {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  background: linear-gradient(180deg, #ffffff, #f7fbff);
+}
+.auth-telegram-direct h1 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: -0.05em;
+}
+.auth-telegram-direct p:not(.eyebrow):not(.auth-footnote) {
+  margin: 0;
+  color: #5f6f8b;
+  font-size: 17px;
+  line-height: 1.5;
+}
 .auth-email-section {
   display: grid;
   gap: 16px;
-  padding: 18px;
+  padding: 16px 18px;
   border-radius: 24px;
   background: #ffffff;
   border: 1px solid rgba(18, 48, 95, 0.08);
@@ -593,7 +673,7 @@ tbody td small {
 }
 .auth-email-heading h2 {
   margin: 6px 0 0;
-  font-size: 20px;
+  font-size: 18px;
   letter-spacing: -0.04em;
 }
 .auth-switch {
@@ -980,6 +1060,16 @@ tbody td small {
   font-size: 24px;
   letter-spacing: -0.04em;
 }
+.account-copy {
+  margin: 0;
+  color: #5d6d89;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.account-merge-box {
+  display: grid;
+  gap: 14px;
+}
 .account-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1043,9 +1133,6 @@ tbody td small {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .overview-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .auth-layout {
     grid-template-columns: 1fr;
   }
@@ -1060,7 +1147,7 @@ tbody td small {
   }
   .auth-hero h1,
   .auth-copy p,
-  .auth-summary-list {
+  .auth-note-card {
     max-width: none;
   }
   .header-actions {
@@ -1070,41 +1157,80 @@ tbody td small {
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: 14px 12px 26px;
+    padding: 12px 12px 90px;
+  }
+  .app-header {
+    margin-bottom: 14px;
+    gap: 16px;
   }
   .app-heading h1 {
-    font-size: 36px;
+    font-size: 26px;
+  }
+  .portfolio-bar-top h2,
+  .panel-heading h2 {
+    font-size: 18px;
+  }
+  .panel-copy {
+    font-size: 13px;
   }
   .auth-hero h1,
   .empty-state h2 {
-    font-size: 34px;
+    font-size: 28px;
   }
   .auth-copy p,
   .empty-state p {
-    font-size: 17px;
+    font-size: 15px;
   }
-  .auth-feature {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 12px;
-    padding: 14px 15px;
+  .auth-note-card strong {
+    font-size: 16px;
   }
-  .auth-feature-mark {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+  .auth-note-card span {
+    font-size: 13px;
+  }
+  .metric-card h3 {
+    font-size: 18px;
+    line-height: 1.05;
+  }
+  .metric-card span {
+    font-size: 11px;
+  }
+  .metric-card p {
     font-size: 12px;
   }
-  .auth-feature strong {
-    font-size: 17px;
-  }
-  .auth-feature span {
-    font-size: 13px;
+  .metric-card small {
+    font-size: 10px;
+    padding: 5px 10px;
   }
   .auth-card,
   .portfolio-bar,
   .panel,
   .empty-state {
-    padding: 18px;
+    padding: 16px;
+  }
+  .portfolio-bar {
+    border-radius: 24px;
+    margin-bottom: 16px;
+  }
+  .portfolio-chip-row {
+    gap: 10px;
+    padding-bottom: 8px;
+  }
+  .portfolio-chip {
+    min-width: 144px;
+    padding: 13px 14px;
+    border-radius: 18px;
+  }
+  .portfolio-chip span {
+    font-size: 14px;
+  }
+  .portfolio-create-row {
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .portfolio-create-row input,
+  .portfolio-create-button {
+    min-height: 52px;
+    border-radius: 18px;
   }
   .auth-shell {
     padding: 12px;
@@ -1130,10 +1256,12 @@ tbody td small {
     flex-direction: column;
   }
   .auth-grid,
-  .modal-grid,
-  .metric-grid,
-  .overview-strip {
+  .modal-grid {
     grid-template-columns: 1fr;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
   .checkbox-row {
     min-height: auto;
@@ -1155,28 +1283,64 @@ tbody td small {
     flex: 0 0 auto;
   }
   .tab-nav {
-    overflow: auto;
-    padding-bottom: 4px;
+    display: none;
   }
-  .tab-nav button {
-    white-space: nowrap;
+  .tab-nav-mobile {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid rgba(18, 48, 95, 0.08);
+    box-shadow: 0 -12px 24px rgba(18, 48, 95, 0.08);
+    backdrop-filter: blur(12px);
+  }
+  .tab-nav-mobile button {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    padding: 9px 6px 10px;
+    border: none;
+    border-radius: 20px;
+    background: transparent;
+    color: #637392;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .tab-nav-mobile button.active {
+    background: #13213d;
+    color: #fff;
+  }
+  .tab-nav-mobile-icon {
+    font-size: 17px;
+    line-height: 1;
   }
   .desktop-table {
     display: none;
   }
   .mobile-list {
     display: grid;
-    gap: 14px;
+    gap: 12px;
     margin-top: 18px;
   }
   .mobile-card {
     display: grid;
-    gap: 14px;
-    padding: 16px;
-    border-radius: 22px;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 20px;
     border: 1px solid rgba(18, 48, 95, 0.08);
     background: #fff;
     box-shadow: var(--shadow-soft);
+  }
+  .mobile-card-position {
+    background: rgba(255, 255, 255, 0.9);
+  }
+  .mobile-card-transaction {
+    background: rgba(248, 251, 255, 0.92);
   }
   .mobile-card-top {
     display: flex;
@@ -1186,52 +1350,70 @@ tbody td small {
   }
   .mobile-card-top strong {
     display: block;
-    font-size: 18px;
+    font-size: 16px;
   }
   .mobile-card-top small {
     display: block;
     margin-top: 4px;
     color: #687a98;
+    font-size: 13px;
   }
   .mobile-stat-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
   .mobile-stat-grid div {
-    padding: 12px;
-    border-radius: 16px;
+    padding: 10px 11px;
+    border-radius: 14px;
     background: #f7faff;
     border: 1px solid #e2eaf6;
   }
   .mobile-stat-grid span {
     display: block;
     color: #72839f;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
   .mobile-stat-grid strong {
     display: block;
-    margin-top: 8px;
-    font-size: 15px;
+    margin-top: 6px;
+    font-size: 14px;
     letter-spacing: -0.02em;
   }
   .mobile-stat-grid small {
     display: block;
-    margin-top: 8px;
+    margin-top: 6px;
   }
   .row-actions-mobile {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .mini-button {
+    min-height: 42px;
+  }
+  .chart-panel .recharts-responsive-container {
+    height: 280px !important;
+  }
+  .chart-tooltip {
+    min-width: 144px;
+    padding: 12px 14px;
+  }
+  .chart-tooltip strong {
+    font-size: 16px;
+  }
+  .chart-tooltip span {
+    font-size: 15px;
   }
   .auth-badges {
     gap: 8px;
   }
   .auth-badges span {
-    font-size: 11px;
-    padding: 9px 12px;
+    font-size: 10px;
+    padding: 8px 11px;
   }
   .google-signin-wrap {
     justify-content: center;
@@ -1263,18 +1445,51 @@ tbody td small {
 
 @media (max-width: 420px) {
   .app-heading h1 {
-    font-size: 32px;
+    font-size: 24px;
   }
   .auth-copy h1 {
-    font-size: 36px;
+    font-size: 30px;
   }
   .auth-copy p {
-    font-size: 17px;
+    font-size: 15px;
   }
   .portfolio-chip {
-    min-width: 150px;
+    min-width: 132px;
+  }
+  .portfolio-bar {
+    padding: 14px;
+  }
+  .portfolio-chip-row {
+    margin-top: 6px;
+  }
+  .portfolio-chip {
+    padding: 12px 13px;
+    border-radius: 16px;
+  }
+  .tab-nav-mobile {
+    gap: 5px;
+    padding-inline: 8px;
+  }
+  .tab-nav-mobile button {
+    padding: 8px 4px 9px;
+    border-radius: 18px;
+  }
+  .chart-panel .recharts-responsive-container {
+    height: 248px !important;
+  }
+  .portfolio-create-row {
+    grid-template-columns: 1fr;
+  }
+  .portfolio-create-button {
+    width: 100%;
   }
   .mobile-stat-grid {
     grid-template-columns: 1fr;
+  }
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .metric-card {
+    min-height: 132px;
   }
 }

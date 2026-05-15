@@ -8,6 +8,7 @@ export function VolatilityView({volatility}) {
         <div>
           <p className="eyebrow">VOLATILITY</p>
           <h2>Risk snapshot by ticker</h2>
+          <p className="panel-copy">See how far each holding sits from its recent peak and where drawdown risk is clustering.</p>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={340}>

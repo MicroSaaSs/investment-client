@@ -34,6 +34,11 @@ export const api = {
     this.setToken(res.token);
     return res;
   },
+  async linkGoogle(credential) {
+    const res = await request("/api/auth/google/link", {method: "POST", body: JSON.stringify({credential})});
+    this.setToken(res.token);
+    return res;
+  },
   async authTelegram(initData) {
     const res = await request("/api/auth/telegram", {method: "POST", body: JSON.stringify({initData})});
     this.setToken(res.token);
@@ -41,6 +46,11 @@ export const api = {
   },
   async linkTelegram(initData, code) {
     const res = await request("/api/auth/telegram/link", {method: "POST", body: JSON.stringify({initData, code})});
+    this.setToken(res.token);
+    return res;
+  },
+  async linkEmail(payload) {
+    const res = await request("/api/auth/email/link", {method: "POST", body: JSON.stringify(payload)});
     this.setToken(res.token);
     return res;
   },

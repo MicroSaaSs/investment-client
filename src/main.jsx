@@ -1,4 +1,4 @@
-import React, {startTransition, useEffect, useState} from "react";
+import React, {startTransition, useEffect, useRef, useState} from "react";
 import {createRoot} from "react-dom/client";
 import {api} from "./services/api";
 import {AuthScreen} from "./components/AuthScreen";
@@ -27,6 +27,7 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authBusy, setAuthBusy] = useState(true);
   const [authForm, setAuthForm] = useState({email: "", password: "", firstName: "", lastName: ""});
+  const [emailLinkForm, setEmailLinkForm] = useState({email: "", password: ""});
   const [telegramLinkCode, setTelegramLinkCode] = useState("");
   const [portfolios, setPortfolios] = useState([]);
   const [portfolioId, setPortfolioId] = useState("");
@@ -40,8 +41,10 @@ function App() {
   const [modal, setModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [linkSession, setLinkSession] = useState(null);
+  const telegramAutoLoginAttempted = useRef(false);
   const isAuthenticated = Boolean(api.getToken());
   const telegramInitData = getTelegramInitData();
+  const isTelegramMiniApp = Boolean(telegramInitData);
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
 
   useEffect(() => {
@@ -53,6 +56,11 @@ function App() {
           const user = await api.getCurrentUser();
           setCurrentUser(user);
           await loadPortfolios();
+        } else if (telegramInitData && !telegramAutoLoginAttempted.current) {
+          telegramAutoLoginAttempted.current = true;
+          const authResponse = await api.authTelegram(telegramInitData);
+          setCurrentUser(authResponse);
+          await loadPortfolios();
         }
       } catch (e) {
         api.setToken("");
@@ -63,7 +71,7 @@ function App() {
       }
     }
     boot();
-  }, []);
+  }, [telegramInitData]);
 
   useEffect(() => {
     if (isAuthenticated || telegramInitData || !GOOGLE_CLIENT_ID) return;
@@ -112,6 +120,14 @@ function App() {
   }, [isAuthenticated, telegramInitData]);
 
   useEffect(() => {
+    if (!currentUser) return;
+    setEmailLinkForm((current) => ({
+      email: current.email || currentUser.email || "",
+      password: current.password,
+    }));
+  }, [currentUser]);
+
+  useEffect(() => {
     if (!portfolioId) return;
     refreshPortfolioViews(portfolioId).catch((e) => setError(String(e.message || e)));
   }, [portfolioId]);
@@ -148,6 +164,10 @@ function App() {
     setAuthForm((current) => ({...current, [key]: value}));
   }
 
+  function updateEmailLinkField(key, value) {
+    setEmailLinkForm((current) => ({...current, [key]: value}));
+  }
+
   async function submitAuth(event) {
     event.preventDefault();
     setError("");
@@ -178,6 +198,52 @@ function App() {
         : await api.authTelegram(telegramInitData);
       setCurrentUser(authResponse);
       setTelegramLinkCode("");
+      await loadPortfolios();
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleTelegramMerge() {
+    if (!telegramInitData || !telegramLinkCode.trim()) return;
+    setError("");
+    setAuthBusy(true);
+    try {
+      const authResponse = await api.linkTelegram(telegramInitData, telegramLinkCode.trim());
+      setCurrentUser(authResponse);
+      setTelegramLinkCode("");
+      setLinkSession(null);
+      await loadPortfolios();
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleEmailLink() {
+    setError("");
+    setAuthBusy(true);
+    try {
+      const authResponse = await api.linkEmail(emailLinkForm);
+      setCurrentUser(authResponse);
+      setEmailLinkForm({email: authResponse.email || "", password: ""});
+      await loadPortfolios();
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleGoogleLink(credential) {
+    setError("");
+    setAuthBusy(true);
+    try {
+      const authResponse = await api.linkGoogle(credential);
+      setCurrentUser(authResponse);
       await loadPortfolios();
     } catch (e) {
       setError(String(e.message || e));
@@ -259,6 +325,7 @@ function App() {
     setModal(null);
     setLinkSession(null);
     setTelegramLinkCode("");
+    setEmailLinkForm({email: "", password: ""});
   }
 
   const positions = metrics?.positions || [];
@@ -271,7 +338,8 @@ function App() {
         authMode={authMode}
         error={error}
         googleClientId={GOOGLE_CLIENT_ID}
-        hasTelegramInitData={Boolean(telegramInitData)}
+        hasTelegramInitData={isTelegramMiniApp}
+        telegramMode={isTelegramMiniApp}
         onAuthModeChange={setAuthMode}
         onTelegramLogin={telegramLogin}
         onFieldChange={updateAuthField}
@@ -299,7 +367,7 @@ function App() {
         <PortfolioBar
           portfolioId={portfolioId}
           portfolios={portfolios}
-          onCreate={() => setModal("create-portfolio")}
+          onCreate={handleCreatePortfolio}
           onDelete={() => setModal("delete-portfolio")}
           onRename={() => setModal("rename-portfolio")}
           onSelect={setPortfolioId}
@@ -326,7 +394,24 @@ function App() {
       </div>
 
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}
-      {modal === "account" ? <AccountModal currentUser={currentUser} linkSession={linkSession} onClose={() => setModal(null)} onCreateLinkCode={createTelegramLinkCode} /> : null}
+      {modal === "account" ? (
+        <AccountModal
+          authBusy={authBusy}
+          currentUser={currentUser}
+          emailLinkForm={emailLinkForm}
+          googleClientId={GOOGLE_CLIENT_ID}
+          hasTelegramInitData={isTelegramMiniApp}
+          linkSession={linkSession}
+          onClose={() => setModal(null)}
+          onCreateLinkCode={createTelegramLinkCode}
+          onGoogleCredential={handleGoogleLink}
+          onLinkEmail={handleEmailLink}
+          onLinkTelegram={handleTelegramMerge}
+          onEmailLinkFieldChange={updateEmailLinkField}
+          onTelegramLinkCodeChange={setTelegramLinkCode}
+          telegramLinkCode={telegramLinkCode}
+        />
+      ) : null}
       {modal === "rename-portfolio" && selectedPortfolio ? <PortfolioModal mode="edit" onClose={() => setModal(null)} onSubmit={handleRenamePortfolio} portfolio={selectedPortfolio} /> : null}
       {modal === "delete-portfolio" && selectedPortfolio ? <ConfirmModal confirmLabel="Delete portfolio" onClose={() => setModal(null)} onConfirm={handleDeletePortfolio} subtitle={`Delete "${selectedPortfolio.name}" together with its positions and transactions?`} title="Delete portfolio" /> : null}
       {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={rawPositions} /> : null}

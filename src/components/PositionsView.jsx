@@ -30,6 +30,7 @@ export function PositionsView({
           <div>
             <p className="eyebrow">POSITIONS</p>
             <h2>Holdings and model drift</h2>
+            <p className="panel-copy">Track live pricing, target weights, and drawdown pressure across your current positions.</p>
           </div>
         </div>
         <div className="table-wrap desktop-table">
@@ -82,18 +83,15 @@ export function PositionsView({
         </div>
         <div className="mobile-list">
           {positions.map((position) => (
-            <article className="mobile-card" key={position.id}>
+            <article className="mobile-card mobile-card-position" key={position.id}>
               <div className="mobile-card-top">
                 <div>
                   <strong>{position.ticker}</strong>
+                  <small>{companyLabel(position)}</small>
                 </div>
                 <SignalPill signal={position.signal} />
               </div>
               <div className="mobile-stat-grid">
-                <div>
-                  <span>Company</span>
-                  <strong>{companyLabel(position)}</strong>
-                </div>
                 <div>
                   <span>Price</span>
                   <strong>{money(position.price, 2)}</strong>
@@ -118,6 +116,7 @@ export function PositionsView({
           <div>
             <p className="eyebrow">TRANSACTIONS</p>
             <h2>Execution history</h2>
+            <p className="panel-copy">Review the trades that built this portfolio and keep every entry editable.</p>
           </div>
         </div>
         <div className="table-wrap desktop-table">
@@ -155,7 +154,7 @@ export function PositionsView({
         </div>
         <div className="mobile-list">
           {transactions.map((transaction) => (
-            <article className="mobile-card" key={transaction.id}>
+            <article className="mobile-card mobile-card-transaction" key={transaction.id}>
               <div className="mobile-card-top">
                 <div>
                   <strong>{transaction.ticker}</strong>

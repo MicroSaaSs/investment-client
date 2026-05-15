@@ -7,6 +7,7 @@ export function AuthScreen({
   error,
   googleClientId,
   hasTelegramInitData,
+  telegramMode,
   onAuthModeChange,
   onFieldChange,
   onSubmit,
@@ -16,6 +17,25 @@ export function AuthScreen({
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const ctaLabel = authMode === "register" ? "Create account" : "Log in";
+
+  if (telegramMode) {
+    return (
+      <div className="auth-shell auth-shell-telegram">
+        <section className="auth-card auth-card-telegram">
+          <div className="auth-telegram-direct">
+            <p className="eyebrow">TELEGRAM MINI APP</p>
+            <h1>Continue with Telegram</h1>
+            <p>We detected your Telegram Mini App session and will sign you in directly.</p>
+            <button className="primary auth-submit" disabled={authBusy} onClick={onTelegramLogin} type="button">
+              {authBusy ? "Signing you in..." : "Continue with Telegram"}
+            </button>
+            <p className="auth-footnote">Need to combine this Telegram account with a browser account later? Open Account settings after sign-in and enter a connect code from the browser.</p>
+            {error ? <div className="error">{error}</div> : null}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-shell">
@@ -27,29 +47,15 @@ export function AuthScreen({
           </div>
 
           <div className="auth-copy">
-            <p>Sign in with Google or email, then keep the same portfolio workspace in browser and Telegram.</p>
-            <div className="auth-summary-list">
-              <article className="auth-feature auth-feature-primary">
-                <div className="auth-feature-mark">01</div>
-                <div>
-                  <strong>Fast browser entry</strong>
-                  <span>Start with Google in one tap when you want the shortest path.</span>
-                </div>
-              </article>
-              <article className="auth-feature">
-                <div className="auth-feature-mark">02</div>
-                <div>
-                  <strong>Stable fallback</strong>
-                  <span>Use email and password when you want a dependable browser login.</span>
-                </div>
-              </article>
-              <article className="auth-feature">
-                <div className="auth-feature-mark">03</div>
-                <div>
-                  <strong>Shared account</strong>
-                  <span>Link Telegram later and keep the same data across browser and Mini App.</span>
-                </div>
-              </article>
+            <p>Use Google for the fast path, or sign in with email to keep your portfolios, transactions, and analytics in one place.</p>
+            <div className="auth-badges">
+              <span>MINI APP READY</span>
+              <span>LIVE API SYNC</span>
+              <span>MOBILE FIRST</span>
+            </div>
+            <div className="auth-note-card">
+              <strong>One workspace across browser and Telegram</strong>
+              <span>Link or merge accounts later in Account settings whenever you want both entry points on the same data.</span>
             </div>
           </div>
 
@@ -119,23 +125,14 @@ export function AuthScreen({
             {!googleClientId ? (
               <div className="error">Set `VITE_GOOGLE_CLIENT_ID` to enable browser Google login.</div>
             ) : null}
-
             {hasTelegramInitData ? (
               <div className="auth-dev-row">
                 <div className="auth-telegram-panel">
                   <div className="auth-google-heading">
                     <p className="eyebrow">TELEGRAM MINI APP</p>
-                    <h2>{telegramLinkCode.trim() ? "Link Telegram to browser account" : "Continue with Telegram"}</h2>
-                    <span>{telegramLinkCode.trim() ? "Enter the connect code created in browser settings, then finish the Telegram handshake." : "Telegram Mini App data was detected for this session."}</span>
+                    <h2>Open in Telegram for direct sign-in</h2>
+                    <span>Inside the Mini App, Telegram users sign in automatically. Use Account settings later if you want to merge that identity with a browser account.</span>
                   </div>
-                  <label className="auth-field">
-                    <span>Connect code</span>
-                    <input maxLength="8" placeholder="Optional 8-character code" value={telegramLinkCode} onChange={(e) => onTelegramLinkCodeChange(e.target.value.toUpperCase())} />
-                  </label>
-                  <button className="ghost auth-telegram" disabled={authBusy} onClick={onTelegramLogin} type="button">
-                    {telegramLinkCode.trim() ? "Link and continue" : "Continue with Telegram"}
-                  </button>
-                  <p className="auth-footnote">Use the code only when you want this Telegram identity linked to an existing browser account.</p>
                 </div>
               </div>
             ) : null}

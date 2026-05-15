@@ -99,6 +99,7 @@ dist
 # Storybook build outputs
 .out
 .storybook-out
+reference/
 
 # vuepress build output
 .vuepress/dist
