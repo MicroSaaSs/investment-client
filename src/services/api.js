@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 const TOKEN_KEY = "investment-platform-token";
 let token = window.localStorage.getItem(TOKEN_KEY) || "";
 
