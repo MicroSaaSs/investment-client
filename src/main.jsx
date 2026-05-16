@@ -3,7 +3,7 @@ import {createRoot} from "react-dom/client";
 import {api} from "./services/api";
 import {AuthScreen} from "./components/AuthScreen";
 import {AppHeader} from "./components/AppHeader";
-import {PortfolioBar} from "./components/PortfolioBar";
+import {PortfolioView} from "./components/PortfolioView";
 import {TabNav} from "./components/TabNav";
 import {DashboardView} from "./components/DashboardView";
 import {PositionsView} from "./components/PositionsView";
@@ -15,6 +15,7 @@ import {ConfirmModal} from "./components/ConfirmModal";
 import {PositionModal} from "./components/PositionModal";
 import {TransactionModal} from "./components/TransactionModal";
 import {AccountModal} from "./components/AccountModal";
+import {ModalSheet} from "./components/ModalSheet";
 import "./styles.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -30,6 +31,11 @@ function buildEquityFromMetrics(nextMetrics) {
     {day: "Invested", value: nextMetrics.invested || 0},
     {day: "Current", value: nextMetrics.totalValue || 0},
   ];
+}
+
+function splitAllocationPayload(payload) {
+  const {allocationAdjustments = [], ...positionPayload} = payload;
+  return {allocationAdjustments, positionPayload};
 }
 
 function App() {
@@ -300,7 +306,20 @@ function App() {
   async function handleCreatePosition(payload) {
     if (!portfolioId) return;
     setError("");
-    await api.createPosition(portfolioId, payload);
+    const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
+    await api.createPosition(portfolioId, positionPayload);
+    if (allocationAdjustments.length) {
+      await Promise.all(
+        allocationAdjustments.map((adjustment) => {
+          const targetPosition = rawPositions.find((item) => item.id === adjustment.id);
+          if (!targetPosition) return Promise.resolve();
+          return api.updatePosition(portfolioId, adjustment.id, {
+            ...targetPosition,
+            targetAllocationPct: adjustment.targetAllocationPct,
+          });
+        })
+      );
+    }
     await refreshPortfolioViews(portfolioId);
     setModal(null);
   }
@@ -370,18 +389,25 @@ function App() {
 
         {error ? <div className="error">{error}</div> : null}
 
-        <PortfolioBar
-          portfolioId={portfolioId}
-          portfolios={portfolios}
-          onCreate={handleCreatePortfolio}
-          onDelete={() => setModal("delete-portfolio")}
-          onRename={() => setModal("rename-portfolio")}
-          onSelect={setPortfolioId}
+        <TabNav
+          onChange={setTab}
+          onOpenPortfolioSwitch={() => setModal("switch-portfolio")}
+          selectedPortfolioName={selectedPortfolio?.name || ""}
+          tab={tab}
         />
 
-        <TabNav onChange={setTab} tab={tab} />
-
         {!portfolios.length ? <EmptyState onCreatePortfolio={() => setModal("create-portfolio")} /> : null}
+        {portfolios.length && tab === "portfolios" ? (
+          <PortfolioView
+            metrics={metrics}
+            portfolioId={portfolioId}
+            portfolios={portfolios}
+            onCreate={handleCreatePortfolio}
+            onDelete={() => setModal("delete-portfolio")}
+            onRename={() => setModal("rename-portfolio")}
+            onSelect={setPortfolioId}
+          />
+        ) : null}
         {portfolios.length && tab === "dashboard" ? <DashboardView equity={equity} metrics={metrics} /> : null}
         {portfolios.length && tab === "positions" ? (
           <PositionsView
@@ -407,6 +433,29 @@ function App() {
       </div>
 
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}
+      {modal === "switch-portfolio" ? (
+        <ModalSheet title="Switch portfolio" subtitle="Choose the portfolio to display across dashboard, positions, watch list, and volatility." onClose={() => setModal(null)}>
+          <div className="portfolio-switch-list">
+            {portfolios.map((portfolio) => (
+              <button
+                className={`portfolio-switch-row ${portfolio.id === portfolioId ? "active" : ""}`}
+                key={portfolio.id}
+                onClick={() => {
+                  setPortfolioId(portfolio.id);
+                  setModal(null);
+                }}
+                type="button"
+              >
+                <div>
+                  <strong>{portfolio.name}</strong>
+                  {portfolio.defaultPortfolio ? <span>Default portfolio</span> : <span>Open this workspace</span>}
+                </div>
+                <i>{portfolio.id === portfolioId ? "Current" : "Open"}</i>
+              </button>
+            ))}
+          </div>
+        </ModalSheet>
+      ) : null}
       {modal === "account" ? (
         <AccountModal
           authBusy={authBusy}
@@ -431,7 +480,20 @@ function App() {
       {modal === "watchlist" ? <PositionModal mode="create" variant="watchlist" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
       {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={activeRawPositions} /> : null}
       {modal?.type === "edit-position" ? <PositionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
-        await api.updatePosition(portfolioId, payload.id, payload);
+        const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
+        await api.updatePosition(portfolioId, positionPayload.id, positionPayload);
+        if (allocationAdjustments.length) {
+          await Promise.all(
+            allocationAdjustments.map((adjustment) => {
+              const targetPosition = rawPositions.find((item) => item.id === adjustment.id);
+              if (!targetPosition) return Promise.resolve();
+              return api.updatePosition(portfolioId, adjustment.id, {
+                ...targetPosition,
+                targetAllocationPct: adjustment.targetAllocationPct,
+              });
+            })
+          );
+        }
         await refreshPortfolioViews(portfolioId);
         setModal(null);
       }} position={modal.data} positions={activeRawPositions} /> : null}

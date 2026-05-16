@@ -83,7 +83,8 @@ button {
 
 .action-button,
 .toolbar-button,
-.tab-nav button,
+.tab-nav-item,
+.tab-nav-portfolio,
 .portfolio-chip,
 .primary,
 .ghost,
@@ -146,6 +147,92 @@ button {
   padding: 18px;
   border-radius: 28px;
   margin-bottom: 18px;
+}
+.portfolio-bar-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1.45fr);
+  gap: 18px;
+  align-items: start;
+}
+.portfolio-bar-main {
+  display: grid;
+  gap: 0;
+}
+.portfolio-bar-summary {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(247, 250, 255, 0.96), rgba(255, 255, 255, 0.94));
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+.portfolio-bar-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.portfolio-bar-summary-metrics div {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e2eaf6;
+}
+.portfolio-bar-summary-metrics span {
+  color: #70819c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.portfolio-bar-summary-metrics strong {
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+.portfolio-bar-summary-list,
+.portfolio-mobile-summary-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.portfolio-bar-position,
+.portfolio-mobile-position {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #e2eaf6;
+}
+.portfolio-bar-position-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.portfolio-bar-position-head strong {
+  font-size: 16px;
+}
+.portfolio-bar-position small,
+.portfolio-mobile-position small {
+  color: #32445f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.portfolio-bar-summary-empty {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f7faff;
+  border: 1px solid #e2eaf6;
+  color: #687998;
+  font-size: 14px;
+}
+.portfolio-mobile-summary {
+  display: none;
+  margin-top: 14px;
 }
 .portfolio-bar-top,
 .panel-heading {
@@ -256,8 +343,10 @@ button {
   display: flex;
   gap: 12px;
   margin-bottom: 22px;
+  align-items: center;
 }
-.tab-nav button {
+.tab-nav-item,
+.tab-nav-portfolio {
   padding: 16px 22px;
   background: rgba(255, 255, 255, 0.75);
   color: #51627f;
@@ -266,18 +355,78 @@ button {
   font-weight: 800;
   letter-spacing: 0.18em;
 }
-.tab-nav button.active {
+.tab-nav-item.active,
+.tab-nav-portfolio.active {
   background: #13213d;
   color: #fff;
   box-shadow:
     0 0 0 2px #5e98ee inset,
     var(--shadow-soft);
 }
+.tab-nav-portfolio-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.tab-nav-portfolio {
+  min-width: 228px;
+  padding: 16px 22px 15px;
+}
+.tab-nav-portfolio-label {
+  position: absolute;
+  top: -10px;
+  left: 16px;
+  z-index: 1;
+  max-width: 140px;
+  overflow: hidden;
+  padding: 2px 10px 1px;
+  border-radius: 999px;
+  background: #13213d;
+  color: #dbe7ff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(18, 48, 95, 0.08);
+}
+.tab-nav-portfolio-switch {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  border-radius: 999px;
+  background: #fff;
+  opacity: 1;
+  color: #5f7190;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 6px 14px rgba(18, 48, 95, 0.1);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.tab-nav-portfolio-switch:hover {
+  background: #fff;
+  color: var(--ink);
+}
 .tab-nav-mobile {
   display: none;
 }
 
 .dashboard-layout {
+  display: grid;
+  gap: 18px;
+}
+.portfolio-view {
   display: grid;
   gap: 18px;
 }
@@ -367,6 +516,9 @@ button {
   box-shadow: var(--shadow-soft);
   background: #fff;
   min-height: 150px;
+  width: 100%;
+  border: 1px solid rgba(18, 48, 95, 0.04);
+  text-align: left;
 }
 .metric-card-blue {
   background: #edf4ff;
@@ -407,6 +559,9 @@ button {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
+}
+.metric-card:hover {
+  transform: translateY(-1px);
 }
 
 .panel,
@@ -473,6 +628,122 @@ button {
 }
 .mobile-list {
   display: none;
+}
+.portfolio-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.portfolio-overview-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 255, 0.92));
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+.portfolio-overview-card span {
+  color: #60718e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.portfolio-overview-card strong {
+  font-size: 28px;
+  letter-spacing: -0.05em;
+}
+.portfolio-overview-card small {
+  color: #6a7b97;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.metric-detail-stack {
+  display: grid;
+  gap: 10px;
+}
+.metric-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #f7faff;
+  border: 1px solid #e2eaf6;
+}
+.metric-detail-company {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.metric-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.metric-detail-title strong {
+  font-size: 16px;
+}
+.metric-detail-company span {
+  color: #667894;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.metric-detail-value {
+  flex: 0 0 auto;
+  text-align: right;
+  color: #21324e;
+  font-size: 14px;
+  font-weight: 700;
+}
+.metric-detail-empty {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: #f7faff;
+  border: 1px solid #e2eaf6;
+  color: #667894;
+  font-size: 14px;
+}
+.portfolio-switch-list {
+  display: grid;
+  gap: 10px;
+}
+.portfolio-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid #dfe8f4;
+  background: #f8fbff;
+  text-align: left;
+}
+.portfolio-switch-row strong {
+  display: block;
+  font-size: 16px;
+}
+.portfolio-switch-row span {
+  display: block;
+  margin-top: 4px;
+  color: #6e7f99;
+  font-size: 13px;
+}
+.portfolio-switch-row i {
+  font-style: normal;
+  color: #50617e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.portfolio-switch-row.active {
+  background: #eef4ff;
+  border-color: #b9cff0;
 }
 table {
   width: 100%;
@@ -1112,6 +1383,26 @@ tbody td small {
   color: #13213d;
   font-size: 15px;
 }
+.allocation-row-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 138px;
+}
+.allocation-row-input input {
+  min-height: auto;
+  height: 44px;
+  padding: 0 14px;
+  text-align: right;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.allocation-row-input strong {
+  min-width: 16px;
+  color: #6d7fa0;
+  font-size: 14px;
+}
 .allocation-row-current {
   border-color: rgba(43, 99, 179, 0.18);
   background: #f5f9ff;
@@ -1237,6 +1528,12 @@ tbody td small {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .portfolio-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .portfolio-bar-grid {
+    grid-template-columns: 1fr;
+  }
   .watchlist-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1321,6 +1618,18 @@ tbody td small {
     border-radius: 24px;
     margin-bottom: 16px;
   }
+  .portfolio-bar-grid {
+    gap: 0;
+  }
+  .portfolio-bar-summary {
+    display: none;
+  }
+  .portfolio-mobile-summary {
+    display: grid;
+  }
+  .portfolio-mobile-summary-list {
+    grid-template-columns: 1fr;
+  }
   .portfolio-chip-row {
     gap: 10px;
     padding-bottom: 8px;
@@ -1376,6 +1685,12 @@ tbody td small {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
+  .tab-nav-portfolio {
+    min-width: 200px;
+  }
+  .portfolio-overview-grid {
+    grid-template-columns: 1fr;
+  }
   .watchlist-summary-card strong {
     font-size: 20px;
   }
@@ -1410,7 +1725,7 @@ tbody td small {
     bottom: 0;
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
     background: rgba(255, 255, 255, 0.96);
@@ -1467,6 +1782,27 @@ tbody td small {
     justify-content: space-between;
     gap: 12px;
   }
+  .mobile-card-toggle {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+  }
+  .mobile-card-top-meta {
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+  }
+  .mobile-expand-label {
+    color: #6f819f;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .mobile-card-top strong {
     display: block;
     font-size: 16px;
@@ -1505,6 +1841,20 @@ tbody td small {
   .mobile-stat-grid small {
     display: block;
     margin-top: 6px;
+  }
+  .mobile-card-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .mobile-card-summary span {
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: #f2f7ff;
+    border: 1px solid #dce6f4;
+    color: #566882;
+    font-size: 12px;
+    font-weight: 700;
   }
   .row-actions-mobile {
     display: grid;
@@ -1560,6 +1910,13 @@ tbody td small {
   .modal-actions {
     flex-direction: column;
   }
+  .metric-detail-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .metric-detail-value {
+    text-align: left;
+  }
 }
 
 @media (max-width: 420px) {
@@ -1610,5 +1967,12 @@ tbody td small {
   }
   .metric-card {
     min-height: 132px;
+  }
+  .portfolio-bar-summary-list,
+  .portfolio-mobile-summary-list {
+    grid-template-columns: 1fr;
+  }
+  .portfolio-overview-grid {
+    grid-template-columns: 1fr;
   }
 }

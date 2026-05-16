@@ -5,6 +5,10 @@ function companyLabel(position) {
   return (position.company || "").trim() || "—";
 }
 
+function pnlAmount(position) {
+  return Number(position.current || 0) - Number(position.invested || 0);
+}
+
 function SignalPill({signal}) {
   const normalized = (signal || "HOLD").toLowerCase();
   return <span className={`signal-pill signal-${normalized}`}>{signal || "HOLD"}</span>;
@@ -23,6 +27,8 @@ export function PositionsView({
   onEditPosition,
   onEditTransaction,
 }) {
+  const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
+
   return (
     <div className="positions-layout">
       <section className="panel">
@@ -42,6 +48,7 @@ export function PositionsView({
                 <th className="table-center">Price</th>
                 <th className="table-center">Peak Price</th>
                 <th className="table-center">PnL</th>
+                <th className="table-center">PnL $</th>
                 <th className="table-center">Weight</th>
                 <th className="table-center">Target</th>
                 <th className="table-center">Drawdown</th>
@@ -69,6 +76,7 @@ export function PositionsView({
                   </td>
                   <td className="table-center">{money(position.peak, 2)}</td>
                   <td className="table-center">{pct(position.pnlPct)}</td>
+                  <td className="table-center">{money(pnlAmount(position), 0)}</td>
                   <td className="table-center">{pct(position.weight)}</td>
                   <td className="table-center">{pct(position.target)}</td>
                   <td className="table-center">{pct(position.dd)}</td>
@@ -88,30 +96,49 @@ export function PositionsView({
         <div className="mobile-list">
           {positions.map((position) => (
             <article className="mobile-card mobile-card-position" key={position.id}>
+              <button
+                className="mobile-card-toggle"
+                onClick={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
+                type="button"
+              >
               <div className="mobile-card-top">
                 <div>
                   <strong>{position.ticker}</strong>
                   <small>{companyLabel(position)}</small>
                 </div>
-                <SignalPill signal={position.signal} />
-              </div>
-              <div className="mobile-stat-grid">
-                <div>
-                  <span>Price</span>
-                  <strong>{money(position.price, 2)}</strong>
-                  <small><SourceBadge source={position.priceSource} /></small>
+                <div className="mobile-card-top-meta">
+                  <SignalPill signal={position.signal} />
+                  <span className="mobile-expand-label">{expandedMobileCard === position.id ? "Hide" : "Open"}</span>
                 </div>
-                <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
-                <div><span>PnL</span><strong>{pct(position.pnlPct)}</strong></div>
-                <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
-                <div><span>Target</span><strong>{pct(position.target)}</strong></div>
-                <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
-                <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
               </div>
-              <div className="row-actions row-actions-mobile">
-                <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>
-                <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
+              <div className="mobile-card-summary">
+                <span>{money(position.current)} current</span>
+                <span>{pct(position.weight)} weight</span>
+                <span>{pct(position.dd)} drawdown</span>
               </div>
+              </button>
+              {expandedMobileCard === position.id ? (
+                <>
+                  <div className="mobile-stat-grid">
+                    <div>
+                      <span>Price</span>
+                      <strong>{money(position.price, 2)}</strong>
+                      <small><SourceBadge source={position.priceSource} /></small>
+                    </div>
+                    <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
+                    <div><span>PnL %</span><strong>{pct(position.pnlPct)}</strong></div>
+                    <div><span>PnL $</span><strong>{money(pnlAmount(position), 0)}</strong></div>
+                    <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
+                    <div><span>Target</span><strong>{pct(position.target)}</strong></div>
+                    <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
+                    <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
+                  </div>
+                  <div className="row-actions row-actions-mobile">
+                    <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>
+                    <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
+                  </div>
+                </>
+              ) : null}
             </article>
           ))}
         </div>

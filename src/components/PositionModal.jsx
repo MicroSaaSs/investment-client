@@ -5,7 +5,7 @@ const DEFAULT_FORM = {
   ticker: "",
   company: "",
   type: "STOCK",
-  targetAllocationPct: "0",
+  targetAllocationPct: "10",
   includeInAllocation: true,
   correctionPct: "-10",
   drawdownPlanPct: "-20",
@@ -43,28 +43,63 @@ function normalizeMonthsValue(value, fallback) {
   return parsed;
 }
 
+function sanitizeNumericInput(value, {allowNegative = false, allowDecimal = false} = {}) {
+  if (!value) return "";
+  let next = String(value).replace(allowDecimal ? /[^0-9.-]/g : /[^0-9-]/g, "");
+  if (!allowNegative) next = next.replace(/-/g, "");
+  else {
+    const negative = next.startsWith("-") ? "-" : "";
+    next = negative + next.slice(negative ? 1 : 0).replace(/-/g, "");
+  }
+  if (allowDecimal) {
+    const negative = next.startsWith("-") ? "-" : "";
+    const unsigned = negative ? next.slice(1) : next;
+    const parts = unsigned.split(".");
+    next = negative + parts[0] + (parts.length > 1 ? `.${parts.slice(1).join("")}` : "");
+  }
+  const negative = next.startsWith("-") ? "-" : "";
+  const unsigned = negative ? next.slice(1) : next;
+  if (!unsigned) return negative;
+  if (unsigned.includes(".")) {
+    const [integerPart, decimalPart] = unsigned.split(".");
+    const normalizedInteger = integerPart.replace(/^0+(?=\d)/, "") || "0";
+    return `${negative}${normalizedInteger}${decimalPart !== undefined ? `.${decimalPart}` : ""}`;
+  }
+  return `${negative}${unsigned.replace(/^0+(?=\d)/, "") || "0"}`;
+}
+
 export function PositionModal({mode = "create", variant = "position", onClose, onSubmit, position, positions = []}) {
   const [form, setForm] = useState(buildForm(position));
   const isWatchlist = variant === "watchlist";
+  const [allocationTargets, setAllocationTargets] = useState(() =>
+    Object.fromEntries(
+      positions
+        .filter((item) => item.id !== position?.id && item.includeInAllocation)
+        .map((item) => [item.id, String(toNumber(item.targetAllocationPct ?? item.target, 0))])
+    )
+  );
 
   const allocation = useMemo(() => {
     const otherIncluded = positions.filter((item) => item.id !== position?.id && item.includeInAllocation);
-    const otherTotal = otherIncluded.reduce((sum, item) => sum + toNumber(item.targetAllocationPct ?? item.target, 0), 0);
+    const rows = otherIncluded.map((item) => ({
+      id: item.id,
+      ticker: item.ticker,
+      target: toNumber(allocationTargets[item.id] ?? item.targetAllocationPct ?? item.target, 0),
+      rawValue: allocationTargets[item.id] ?? String(toNumber(item.targetAllocationPct ?? item.target, 0)),
+      position: item,
+    }));
+    const otherTotal = rows.reduce((sum, item) => sum + item.target, 0);
     const currentTarget = form.includeInAllocation ? toNumber(form.targetAllocationPct, 0) : 0;
     const total = otherTotal + currentTarget;
     const remaining = 100 - total;
     const valid = !form.includeInAllocation || Math.abs(remaining) < 0.01;
     return {
-      rows: otherIncluded.map((item) => ({
-        id: item.id,
-        ticker: item.ticker,
-        target: toNumber(item.targetAllocationPct ?? item.target, 0),
-      })),
+      rows,
       total,
       remaining,
       valid,
     };
-  }, [form.includeInAllocation, form.targetAllocationPct, position?.id, positions]);
+  }, [allocationTargets, form.includeInAllocation, form.targetAllocationPct, position?.id, positions]);
 
   const volatilityValidation = useMemo(() => {
     const period = toNumber(form.volatilityPeriod, 0);
@@ -86,6 +121,17 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
 
   function update(key, value) {
     setForm((current) => ({...current, [key]: value}));
+  }
+
+  function updateNumericField(key, value, options) {
+    update(key, sanitizeNumericInput(value, options));
+  }
+
+  function updateAllocationTarget(id, value) {
+    setAllocationTargets((current) => ({
+      ...current,
+      [id]: sanitizeNumericInput(value, {allowDecimal: true}),
+    }));
   }
 
   function handleTypeChange(value) {
@@ -120,6 +166,10 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
       peakLookbackMonths: Number(form.peakLookbackMonths || 5),
       volatilityPeriod: Number(form.volatilityPeriod || 36),
       volatilityInterval: Number(form.volatilityInterval || 4),
+      allocationAdjustments: isWatchlist ? [] : allocation.rows.map((row) => ({
+        id: row.id,
+        targetAllocationPct: row.target,
+      })),
     });
   }
 
@@ -138,7 +188,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
             </label>
             <label>
               <span>Company</span>
-              <input placeholder="Palantir Technologies" value={form.company} onChange={(e) => update("company", e.target.value)} />
+              <input placeholder="Company Name" value={form.company} onChange={(e) => update("company", e.target.value)} />
             </label>
             <label>
               <span>Type</span>
@@ -162,35 +212,35 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
             <label className="risk-grid-row1">
               <span>Target allocation</span>
               <div className="input-unit-wrap">
-                <input inputMode="decimal" value={form.targetAllocationPct} onChange={(e) => update("targetAllocationPct", e.target.value)} />
+                <input inputMode="decimal" value={form.targetAllocationPct} onChange={(e) => updateNumericField("targetAllocationPct", e.target.value, {allowDecimal: true})} />
                 <i>%</i>
               </div>
             </label>
             <label className="risk-grid-row1">
               <span>Correction trigger</span>
               <div className="input-unit-wrap">
-                <input inputMode="decimal" value={form.correctionPct} onChange={(e) => update("correctionPct", e.target.value)} />
+                <input inputMode="decimal" value={form.correctionPct} onChange={(e) => updateNumericField("correctionPct", e.target.value, {allowNegative: true, allowDecimal: true})} />
                 <i>%</i>
               </div>
             </label>
             <label className="risk-grid-row1">
               <span>Drawdown trigger</span>
               <div className="input-unit-wrap">
-                <input inputMode="decimal" value={form.drawdownPlanPct} onChange={(e) => update("drawdownPlanPct", e.target.value)} />
+                <input inputMode="decimal" value={form.drawdownPlanPct} onChange={(e) => updateNumericField("drawdownPlanPct", e.target.value, {allowNegative: true, allowDecimal: true})} />
                 <i>%</i>
               </div>
             </label>
             <label className="risk-grid-row2">
               <span>Peak window</span>
               <div className="input-unit-wrap">
-                <input inputMode="numeric" value={form.peakLookbackMonths} onChange={(e) => update("peakLookbackMonths", e.target.value)} />
+                <input inputMode="numeric" value={form.peakLookbackMonths} onChange={(e) => updateNumericField("peakLookbackMonths", e.target.value)} />
                 <i>mo</i>
               </div>
             </label>
             <label className="risk-grid-row2">
               <span>Volatility window</span>
               <div className="input-unit-wrap">
-                <input inputMode="numeric" value={form.volatilityPeriod} onChange={(e) => update("volatilityPeriod", e.target.value)} />
+                <input inputMode="numeric" value={form.volatilityPeriod} onChange={(e) => updateNumericField("volatilityPeriod", e.target.value)} />
                 <i>mo</i>
               </div>
             </label>
@@ -233,7 +283,10 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
             {allocation.rows.map((row) => (
               <div className="allocation-row" key={row.id}>
                 <span>{row.ticker}</span>
-                <strong>{row.target.toFixed(2)}%</strong>
+                <div className="allocation-row-input">
+                  <input inputMode="decimal" value={row.rawValue} onChange={(e) => updateAllocationTarget(row.id, e.target.value)} />
+                  <strong>%</strong>
+                </div>
               </div>
             ))}
             {form.includeInAllocation ? (
