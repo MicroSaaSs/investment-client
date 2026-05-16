@@ -7,6 +7,7 @@ import {PortfolioBar} from "./components/PortfolioBar";
 import {TabNav} from "./components/TabNav";
 import {DashboardView} from "./components/DashboardView";
 import {PositionsView} from "./components/PositionsView";
+import {WatchListView} from "./components/WatchListView";
 import {VolatilityView} from "./components/VolatilityView";
 import {EmptyState} from "./components/EmptyState";
 import {PortfolioModal} from "./components/PortfolioModal";
@@ -23,6 +24,14 @@ function getTelegramInitData() {
   return typeof initData === "string" && initData.trim() ? initData : "";
 }
 
+function buildEquityFromMetrics(nextMetrics) {
+  if (!nextMetrics) return [];
+  return [
+    {day: "Invested", value: nextMetrics.invested || 0},
+    {day: "Current", value: nextMetrics.totalValue || 0},
+  ];
+}
+
 function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authBusy, setAuthBusy] = useState(true);
@@ -35,7 +44,6 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [equity, setEquity] = useState([]);
-  const [volatility, setVolatility] = useState([]);
   const [tab, setTab] = useState("dashboard");
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null);
@@ -144,17 +152,14 @@ function App() {
 
   async function refreshPortfolioViews(id = portfolioId) {
     if (!id) return;
-    const [nextMetrics, nextEquity, nextVolatility, nextPositions, nextTransactions] = await Promise.all([
+    const [nextMetrics, nextPositions, nextTransactions] = await Promise.all([
       api.getMetrics(id),
-      api.getEquityCurve(id),
-      api.getVolatility(id),
       api.getPositions(id),
       api.getTransactions(id),
     ]);
     startTransition(() => {
       setMetrics(nextMetrics);
-      setEquity(nextEquity);
-      setVolatility(nextVolatility);
+      setEquity(buildEquityFromMetrics(nextMetrics));
       setRawPositions(nextPositions);
       setTransactions(nextTransactions);
     });
@@ -285,7 +290,6 @@ function App() {
     await api.deletePortfolio(selectedPortfolio.id);
     setMetrics(null);
     setEquity([]);
-    setVolatility([]);
     setRawPositions([]);
     setTransactions([]);
     const list = await loadPortfolios();
@@ -317,7 +321,6 @@ function App() {
     setPortfolioId("");
     setMetrics(null);
     setEquity([]);
-    setVolatility([]);
     setRawPositions([]);
     setTransactions([]);
     setError("");
@@ -329,6 +332,10 @@ function App() {
   }
 
   const positions = metrics?.positions || [];
+  const activePositions = positions.filter((position) => position.mode !== "WATCHLIST");
+  const watchlistPositions = positions.filter((position) => position.mode === "WATCHLIST");
+  const activeRawPositions = rawPositions.filter((position) => (position.mode || "ACTIVE") !== "WATCHLIST");
+  const volatilityPositions = activePositions.filter((position) => position.type !== "CASH" && position.type !== "CASH_ETF");
 
   if (!isAuthenticated) {
     return (
@@ -358,7 +365,6 @@ function App() {
           onAccount={() => setModal("account")}
           onAddPosition={() => setModal("position")}
           onAddTransaction={() => setModal("transaction")}
-          onCreatePortfolio={() => setModal("create-portfolio")}
           onLogout={logout}
         />
 
@@ -386,11 +392,18 @@ function App() {
               setModal({type: "edit-position", data: source});
             }}
             onEditTransaction={(transaction) => setModal({type: "edit-transaction", data: transaction})}
-            positions={positions}
+            positions={activePositions}
             transactions={transactions}
           />
         ) : null}
-        {portfolios.length && tab === "volatility" ? <VolatilityView volatility={volatility} /> : null}
+        {portfolios.length && tab === "watchlist" ? (
+          <WatchListView
+            onCreateWatch={() => setModal("watchlist")}
+            onDeleteWatch={(position) => setModal({type: "delete-position", data: position})}
+            positions={watchlistPositions}
+          />
+        ) : null}
+        {portfolios.length && tab === "volatility" ? <VolatilityView volatility={volatilityPositions} /> : null}
       </div>
 
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}
@@ -414,13 +427,14 @@ function App() {
       ) : null}
       {modal === "rename-portfolio" && selectedPortfolio ? <PortfolioModal mode="edit" onClose={() => setModal(null)} onSubmit={handleRenamePortfolio} portfolio={selectedPortfolio} /> : null}
       {modal === "delete-portfolio" && selectedPortfolio ? <ConfirmModal confirmLabel="Delete portfolio" onClose={() => setModal(null)} onConfirm={handleDeletePortfolio} subtitle={`Delete "${selectedPortfolio.name}" together with its positions and transactions?`} title="Delete portfolio" /> : null}
-      {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={rawPositions} /> : null}
-      {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={rawPositions} /> : null}
+      {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
+      {modal === "watchlist" ? <PositionModal mode="create" variant="watchlist" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
+      {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={activeRawPositions} /> : null}
       {modal?.type === "edit-position" ? <PositionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
         await api.updatePosition(portfolioId, payload.id, payload);
         await refreshPortfolioViews(portfolioId);
         setModal(null);
-      }} position={modal.data} positions={rawPositions} /> : null}
+      }} position={modal.data} positions={activeRawPositions} /> : null}
       {modal?.type === "delete-position" ? <ConfirmModal confirmLabel="Delete position" onClose={() => setModal(null)} onConfirm={async () => {
         await api.deletePosition(portfolioId, modal.data.id);
         await refreshPortfolioViews(portfolioId);
@@ -430,7 +444,7 @@ function App() {
         await api.updateTransaction(portfolioId, payload.id, payload);
         await refreshPortfolioViews(portfolioId);
         setModal(null);
-      }} positions={rawPositions} transaction={modal.data} /> : null}
+      }} positions={activeRawPositions} transaction={modal.data} /> : null}
       {modal?.type === "delete-transaction" ? <ConfirmModal confirmLabel="Delete transaction" onClose={() => setModal(null)} onConfirm={async () => {
         await api.deleteTransaction(portfolioId, modal.data.id);
         await refreshPortfolioViews(portfolioId);

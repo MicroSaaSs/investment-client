@@ -1,6 +1,8 @@
 import React from "react";
-import {Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
+import {Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {compactMoney, money, pct} from "../utils/format";
+
+const ALLOCATION_COLORS = ["#4f83bf", "#c3504c", "#9dbc59", "#8366aa", "#4ea7c1", "#fe9640", "#7ea1cc", "#d48383"];
 
 function MetricCard({label, value, detail, tone = "default"}) {
   return (
@@ -26,6 +28,15 @@ function EquityTooltip({active, label, payload}) {
 
 export function DashboardView({metrics, equity}) {
   if (!metrics) return null;
+  const activePositions = (metrics.positions || []).filter((position) => position.mode !== "WATCHLIST" && position.includeInAllocation);
+  const boughtAllocation = activePositions.filter((position) => position.invested > 0).map((position) => ({
+    name: position.ticker,
+    value: position.invested,
+  }));
+  const currentAllocation = activePositions.filter((position) => position.current > 0).map((position) => ({
+    name: position.ticker,
+    value: position.current,
+  }));
 
   return (
     <main className="dashboard-layout">
@@ -34,6 +45,40 @@ export function DashboardView({metrics, equity}) {
         <MetricCard label="Invested" value={compactMoney(metrics.invested)} detail="Cost basis" />
         <MetricCard label="PnL" value={`${compactMoney(metrics.pnl)} / ${pct(metrics.pnlPct)}`} detail="Portfolio result" tone="green" />
         <MetricCard label="Signals" value={`${String(metrics.activeSignals)} active`} detail="BUY1 / BUY2" tone="amber" />
+      </div>
+      <div className="allocation-pie-grid">
+        <section className="panel allocation-pie-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Bought Allocation</h2>
+              <p className="panel-copy">How the invested capital was originally distributed across active holdings.</p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie data={boughtAllocation} dataKey="value" nameKey="name" outerRadius={108} innerRadius={0} paddingAngle={1} label={({name, percent}) => `${name} ${(percent * 100).toFixed(1)}%`}>
+                {boughtAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
+              </Pie>
+              <Tooltip formatter={(value) => money(value, 0)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </section>
+        <section className="panel allocation-pie-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Current Allocation</h2>
+              <p className="panel-copy">How the live portfolio value is distributed right now across active holdings.</p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie data={currentAllocation} dataKey="value" nameKey="name" outerRadius={108} innerRadius={0} paddingAngle={1} label={({name, percent}) => `${name} ${(percent * 100).toFixed(1)}%`}>
+                {currentAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
+              </Pie>
+              <Tooltip formatter={(value) => money(value, 0)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </section>
       </div>
       <section className="panel chart-panel">
         <div className="panel-heading">

@@ -43,8 +43,9 @@ function normalizeMonthsValue(value, fallback) {
   return parsed;
 }
 
-export function PositionModal({mode = "create", onClose, onSubmit, position, positions = []}) {
+export function PositionModal({mode = "create", variant = "position", onClose, onSubmit, position, positions = []}) {
   const [form, setForm] = useState(buildForm(position));
+  const isWatchlist = variant === "watchlist";
 
   const allocation = useMemo(() => {
     const otherIncluded = positions.filter((item) => item.id !== position?.id && item.includeInAllocation);
@@ -105,16 +106,17 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!form.ticker.trim() || !allocation.valid || !volatilityValidation.valid) return;
+    if (!form.ticker.trim() || (!isWatchlist && !allocation.valid) || !volatilityValidation.valid) return;
     onSubmit({
       id: position?.id,
       ticker: form.ticker.trim().toUpperCase(),
       company: form.company.trim(),
       type: form.type,
-      targetAllocationPct: Number(form.targetAllocationPct || 0),
-      includeInAllocation: form.includeInAllocation,
-      correctionPct: Number(form.correctionPct || 0),
-      drawdownPlanPct: Number(form.drawdownPlanPct || 0),
+      mode: isWatchlist ? "WATCHLIST" : "ACTIVE",
+      targetAllocationPct: isWatchlist ? 0 : Number(form.targetAllocationPct || 0),
+      includeInAllocation: isWatchlist ? false : form.includeInAllocation,
+      correctionPct: isWatchlist ? -10 : Number(form.correctionPct || 0),
+      drawdownPlanPct: isWatchlist ? -20 : Number(form.drawdownPlanPct || 0),
       peakLookbackMonths: Number(form.peakLookbackMonths || 5),
       volatilityPeriod: Number(form.volatilityPeriod || 36),
       volatilityInterval: Number(form.volatilityInterval || 4),
@@ -122,14 +124,14 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
   }
 
   return (
-    <ModalSheet title={mode === "edit" ? "Position settings" : "Position setup"} subtitle={mode === "edit" ? "Refine allocation, peak lookback, and risk thresholds for an existing holding." : "Add a position with its target allocation, peak lookback, and correction thresholds."} onClose={onClose}>
+    <ModalSheet title={isWatchlist ? "Watch list item" : mode === "edit" ? "Position settings" : "Position setup"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : mode === "edit" ? "Refine allocation, peak lookback, and risk thresholds for an existing holding." : "Add a position with its target allocation, peak lookback, and correction thresholds."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
         <div className="modal-section modal-actions-wide">
           <div className="modal-section-heading">
             <p className="modal-kicker">Position identity</p>
             <h4>Define the holding</h4>
           </div>
-          <div className="modal-grid">
+          <div className="modal-grid modal-grid-identity">
             <label>
               <span>Ticker</span>
               <input autoFocus disabled={mode === "edit"} placeholder="NVDA" value={form.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase())} />
@@ -149,6 +151,7 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
           </div>
         </div>
 
+        {!isWatchlist ? (
         <div className="modal-section modal-actions-wide">
           <div className="modal-section-heading">
             <p className="modal-kicker">Risk settings</p>
@@ -207,15 +210,16 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
             </label>
           </div>
         </div>
+        ) : null}
 
-        <label className="checkbox-row modal-actions-wide">
+        {!isWatchlist ? <label className="checkbox-row modal-actions-wide">
           <span>
             <b>Include in allocation</b>
             <small>{form.type === "STOCK" ? "Included positions must sum to exactly 100%." : "Cash positions stay outside the target model by default."}</small>
           </span>
           <input checked={form.includeInAllocation} disabled={form.type !== "STOCK"} onChange={(e) => update("includeInAllocation", e.target.checked)} type="checkbox" />
-        </label>
-        <div className="allocation-card modal-actions-wide">
+        </label> : null}
+        {!isWatchlist ? <div className="allocation-card modal-actions-wide">
           <div className="allocation-card-top">
             <div>
               <p className="modal-kicker">Target allocation</p>
@@ -241,8 +245,8 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
               <div className="allocation-note">This position will stay outside the 100% target model.</div>
             )}
           </div>
-        </div>
-        {!allocation.valid ? (
+        </div> : null}
+        {!isWatchlist && !allocation.valid ? (
           <div className="validation-banner modal-actions-wide">
             Save is disabled until all included target allocations sum to exactly 100%.
           </div>
@@ -254,7 +258,7 @@ export function PositionModal({mode = "create", onClose, onSubmit, position, pos
         ) : null}
         <div className="modal-actions modal-actions-wide">
           <button className="ghost" onClick={onClose} type="button">Cancel</button>
-          <button className="primary" disabled={!allocation.valid || !volatilityValidation.valid} type="submit">{mode === "edit" ? "Save changes" : "Save position"}</button>
+          <button className="primary" disabled={(!isWatchlist && !allocation.valid) || !volatilityValidation.valid} type="submit">{isWatchlist ? "Save watch item" : mode === "edit" ? "Save changes" : "Save position"}</button>
         </div>
       </form>
     </ModalSheet>

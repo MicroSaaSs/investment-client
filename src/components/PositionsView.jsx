@@ -1,8 +1,8 @@
 import React from "react";
-import {money, pct, sourceLabel} from "../utils/format";
+import {money, pct, pctMagnitude, sourceLabel} from "../utils/format";
 
 function companyLabel(position) {
-  return (position.company || "").trim() || "Not set";
+  return (position.company || "").trim() || "—";
 }
 
 function SignalPill({signal}) {
@@ -40,10 +40,12 @@ export function PositionsView({
                 <th>Ticker</th>
                 <th>Company</th>
                 <th className="table-center">Price</th>
+                <th className="table-center">Peak Price</th>
                 <th className="table-center">PnL</th>
                 <th className="table-center">Weight</th>
                 <th className="table-center">Target</th>
                 <th className="table-center">Drawdown</th>
+                <th className="table-center">Volatility</th>
                 <th className="table-center">Signal</th>
                 <th className="table-center">Actions</th>
               </tr>
@@ -65,10 +67,12 @@ export function PositionsView({
                       <small><SourceBadge source={position.priceSource} /></small>
                     </div>
                   </td>
+                  <td className="table-center">{money(position.peak, 2)}</td>
                   <td className="table-center">{pct(position.pnlPct)}</td>
                   <td className="table-center">{pct(position.weight)}</td>
                   <td className="table-center">{pct(position.target)}</td>
                   <td className="table-center">{pct(position.dd)}</td>
+                  <td className="table-center">{pctMagnitude(position.volatility)}</td>
                   <td className="table-center"><SignalPill signal={position.signal} /></td>
                   <td className="table-center">
                     <div className="row-actions row-actions-center">
@@ -97,10 +101,12 @@ export function PositionsView({
                   <strong>{money(position.price, 2)}</strong>
                   <small><SourceBadge source={position.priceSource} /></small>
                 </div>
+                <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
                 <div><span>PnL</span><strong>{pct(position.pnlPct)}</strong></div>
                 <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
                 <div><span>Target</span><strong>{pct(position.target)}</strong></div>
                 <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
+                <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
               </div>
               <div className="row-actions row-actions-mobile">
                 <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>

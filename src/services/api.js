@@ -62,7 +62,6 @@ export const api = {
   deletePortfolio: (id) => request(`/api/portfolios/${id}`, {method: "DELETE"}),
   getMetrics: (id) => request(`/api/portfolios/${id}/metrics`),
   getEquityCurve: (id) => request(`/api/portfolios/${id}/equity-curve`),
-  getVolatility: (id) => request(`/api/portfolios/${id}/volatility`),
   getPositions: (id) => request(`/api/portfolios/${id}/positions`),
   createPosition: (id, payload) => request(`/api/portfolios/${id}/positions`, {method: "POST", body: JSON.stringify(payload)}),
   updatePosition: (portfolioId, id, payload) => request(`/api/portfolios/${portfolioId}/positions/${id}`, {method: "PUT", body: JSON.stringify(payload)}),
