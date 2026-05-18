@@ -16,7 +16,7 @@ function PositionMiniRow({position, mode}) {
   };
 
   return (
-    <div className="metric-detail-row">
+    <div className={`metric-detail-row metric-detail-row-${mode}`}>
       <div className="metric-detail-company">
         <div className="metric-detail-title">
           <strong>{position.ticker}</strong>

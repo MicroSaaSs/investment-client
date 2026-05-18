@@ -3,6 +3,7 @@ import {createRoot} from "react-dom/client";
 import {api} from "./services/api";
 import {AuthScreen} from "./components/AuthScreen";
 import {AppHeader} from "./components/AppHeader";
+import {TopMenuBar} from "./components/TopMenuBar";
 import {PortfolioView} from "./components/PortfolioView";
 import {TabNav} from "./components/TabNav";
 import {DashboardView} from "./components/DashboardView";
@@ -38,6 +39,50 @@ function splitAllocationPayload(payload) {
   return {allocationAdjustments, positionPayload};
 }
 
+function useScrollNavVisibility() {
+  const [direction, setDirection] = useState("up");
+  const [atTop, setAtTop] = useState(true);
+
+  useEffect(() => {
+    let lastY = window.scrollY || 0;
+    let ticking = false;
+
+    function update() {
+      const currentY = window.scrollY || 0;
+      const delta = currentY - lastY;
+      const nextAtTop = currentY <= 8;
+
+      setAtTop(nextAtTop);
+
+      if (Math.abs(delta) > 8) {
+        if (nextAtTop) {
+          setDirection("up");
+        } else {
+          setDirection(delta > 0 ? "down" : "up");
+        }
+        lastY = currentY;
+      }
+
+      ticking = false;
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    }
+
+    window.addEventListener("scroll", onScroll, {passive: true});
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return {
+    showTopBar: !atTop && direction === "down",
+    showBottomNav: atTop || direction === "up",
+  };
+}
+
 function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authBusy, setAuthBusy] = useState(true);
@@ -59,6 +104,7 @@ function App() {
   const isAuthenticated = Boolean(api.getToken());
   const telegramInitData = getTelegramInitData();
   const isTelegramMiniApp = Boolean(telegramInitData);
+  const {showTopBar, showBottomNav} = useScrollNavVisibility();
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
 
   useEffect(() => {
@@ -380,20 +426,25 @@ function App() {
     <div className="app-shell">
       <div className="app">
         <AppHeader
-          hasPortfolio={Boolean(selectedPortfolio)}
           onAccount={() => setModal("account")}
+          onLogout={logout}
+        />
+
+        <TopMenuBar
+          hasPortfolio={Boolean(selectedPortfolio)}
           onAddPosition={() => setModal("position")}
           onAddTransaction={() => setModal("transaction")}
-          onLogout={logout}
+          onOpenPortfolioSwitch={() => setModal("switch-portfolio")}
+          selectedPortfolioName={selectedPortfolio?.name || ""}
+          visible={showTopBar}
         />
 
         {error ? <div className="error">{error}</div> : null}
 
         <TabNav
           onChange={setTab}
-          onOpenPortfolioSwitch={() => setModal("switch-portfolio")}
-          selectedPortfolioName={selectedPortfolio?.name || ""}
           tab={tab}
+          visible={showBottomNav}
         />
 
         {!portfolios.length ? <EmptyState onCreatePortfolio={() => setModal("create-portfolio")} /> : null}
@@ -404,6 +455,11 @@ function App() {
             portfolios={portfolios}
             onCreate={handleCreatePortfolio}
             onDelete={() => setModal("delete-portfolio")}
+            onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
+            onEditPosition={(position) => {
+              const source = rawPositions.find((item) => item.id === position.id) || position;
+              setModal({type: "edit-position", data: source});
+            }}
             onRename={() => setModal("rename-portfolio")}
             onSelect={setPortfolioId}
           />

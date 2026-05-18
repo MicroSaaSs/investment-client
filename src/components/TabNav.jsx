@@ -8,50 +8,35 @@ const TABS = [
   {id: "volatility", label: "VOLATILITY", short: "Risk", icon: "📉"},
 ];
 
-export function TabNav({tab, onChange, selectedPortfolioName, onOpenPortfolioSwitch}) {
+export function TabNav({tab, onChange, visible = true}) {
   return (
     <>
       <nav className="tab-nav">
         {TABS.map((item) => {
-          const isPortfolioTab = item.id === "portfolios";
           return (
-            <div className={isPortfolioTab ? "tab-nav-portfolio-wrap" : ""} key={item.id}>
-              <button
-                className={`tab-nav-item ${item.id === tab ? "active" : ""} ${isPortfolioTab ? "tab-nav-portfolio" : ""}`.trim()}
-                onClick={() => onChange(item.id)}
-                type="button"
-              >
-                <span>{item.label}</span>
-              </button>
-              {isPortfolioTab && selectedPortfolioName ? (
-                <span className="tab-nav-portfolio-label">{selectedPortfolioName}</span>
-              ) : null}
-              {isPortfolioTab && onOpenPortfolioSwitch ? (
-                <button
-                  aria-label="Change portfolio"
-                  className="tab-nav-portfolio-switch"
-                  onClick={onOpenPortfolioSwitch}
-                  title="Change portfolio"
-                  type="button"
-                >
-                  ⇄
-                </button>
-              ) : null}
-            </div>
+            <button
+              className={`tab-nav-item ${item.id === tab ? "active" : ""}`.trim()}
+              key={item.id}
+              onClick={() => onChange(item.id)}
+              type="button"
+            >
+              <span>{item.label}</span>
+            </button>
           );
         })}
       </nav>
-      <nav className="tab-nav-mobile">
+      <nav className={`tab-nav-mobile ${visible ? "is-visible" : "is-hidden"}`}>
         {TABS.map((item) => (
-          <button
-            className={item.id === tab ? "active" : ""}
-            key={item.id}
-            onClick={() => onChange(item.id)}
-            type="button"
-          >
-            <span className="tab-nav-mobile-icon" aria-hidden="true">{item.icon}</span>
-            <span>{item.short}</span>
-          </button>
+          <div className="tab-nav-mobile-item-wrap" key={item.id}>
+            <button
+              className={item.id === tab ? "active" : ""}
+              onClick={() => onChange(item.id)}
+              type="button"
+            >
+              <span className="tab-nav-mobile-icon" aria-hidden="true">{item.icon}</span>
+              <span>{item.short}</span>
+            </button>
+          </div>
         ))}
       </nav>
     </>

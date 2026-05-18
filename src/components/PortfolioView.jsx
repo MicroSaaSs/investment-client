@@ -1,24 +1,79 @@
-import {compactMoney} from "../utils/format";
+import React from "react";
+import {compactMoney, money, pct, pctMagnitude, sourceLabel} from "../utils/format";
+import {ModalSheet} from "./ModalSheet";
 import {PortfolioBar} from "./PortfolioBar";
+
+function SignalBadge({signal}) {
+  const normalized = signal || "HOLD";
+  return <span className={`signal-pill signal-${normalized.toLowerCase()}`}>{normalized}</span>;
+}
+
+function SourceBadge({source}) {
+  const normalized = (source || "UNAVAILABLE").toLowerCase();
+  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
+}
+
+function PositionDetailsModal({position, onClose, onEditPosition, onDeletePosition}) {
+  if (!position) return null;
+
+  return (
+    <ModalSheet title="Position details" subtitle={`${position.ticker} overview`} onClose={onClose}>
+      <div className="position-detail-sheet">
+        <div className="position-detail-hero">
+          <div className="position-detail-hero-main">
+            <div className="position-detail-title">
+              <strong>{position.ticker}</strong>
+              <SignalBadge signal={position.signal} />
+            </div>
+            <p>{(position.company || "").trim() || "—"}</p>
+          </div>
+          <div className="position-detail-title-actions">
+            <button className="mini-button mini-button-secondary" onClick={() => onEditPosition(position)} type="button">Edit</button>
+            <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
+          </div>
+        </div>
+        <div className="position-detail-grid">
+          <div>
+            <span>Price</span>
+            <strong>{money(position.price, 2)}</strong>
+            <small><SourceBadge source={position.priceSource} /></small>
+          </div>
+          <div><span>Peak Price</span><strong>{money(position.peak, 2)}</strong></div>
+          <div><span>PnL</span><strong>{pct(position.pnlPct)}</strong></div>
+          <div><span>PnL $</span><strong>{money(Number(position.current || 0) - Number(position.invested || 0), 0)}</strong></div>
+          <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
+          <div><span>Target</span><strong>{pct(position.target)}</strong></div>
+          <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
+          <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
+          <div><span>Corr Trigger</span><strong>{pctMagnitude(Math.abs(position.corr))}</strong><small>{money(position.correctionTrigger, 0)}</small></div>
+          <div><span>DD_P Trigger</span><strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong><small>{money(position.drawdownTrigger, 0)}</small></div>
+        </div>
+      </div>
+    </ModalSheet>
+  );
+}
 
 export function PortfolioView({
   portfolios,
   portfolioId,
   metrics,
+  onEditPosition,
+  onDeletePosition,
   onSelect,
   onCreate,
   onRename,
   onDelete,
 }) {
+  const [detailPosition, setDetailPosition] = React.useState(null);
   const selected = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
   const activePositions = (metrics?.positions || []).filter((position) => position.mode !== "WATCHLIST");
+  const sortedPositions = [...activePositions].sort((left, right) => Number(right.current || 0) - Number(left.current || 0));
   const includedCount = activePositions.filter((position) => position.includeInAllocation).length;
   const cashCount = activePositions.filter((position) => position.type === "CASH" || position.type === "CASH_ETF").length;
 
   return (
     <main className="portfolio-view">
       <PortfolioBar
-        metrics={metrics}
         portfolios={portfolios}
         portfolioId={portfolioId}
         onCreate={onCreate}
@@ -27,7 +82,42 @@ export function PortfolioView({
         onSelect={onSelect}
       />
       {selected ? (
-        <section className="panel portfolio-overview-panel">
+        <>
+          <section className="panel portfolio-preview-panel">
+            <div className="panel-heading panel-heading-inline">
+              <div>
+                <p className="eyebrow">POSITIONS</p>
+              </div>
+            </div>
+            <div className="portfolio-bar-summary">
+              <div className="portfolio-bar-summary-list">
+                {sortedPositions.map((position) => (
+                  <button
+                    className="portfolio-bar-position"
+                    key={position.id}
+                    onClick={() => setDetailPosition(position)}
+                    type="button"
+                  >
+                    <div className="portfolio-bar-position-main">
+                      <div className="portfolio-bar-position-head">
+                        <strong>{position.ticker}</strong>
+                        <SignalBadge signal={position.signal} />
+                      </div>
+                      <span className="portfolio-bar-position-company">{position.company || "—"}</span>
+                    </div>
+                    <div className="portfolio-bar-position-values">
+                      <strong>{compactMoney(position.current)}</strong>
+                      <span>{Number(position.weight || 0).toFixed(1)}%</span>
+                      <span>{Number(position.shares || 0).toLocaleString()} sh</span>
+                    </div>
+                  </button>
+                ))}
+                {!sortedPositions.length ? <div className="portfolio-bar-summary-empty">Add positions to see the portfolio overview here.</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel portfolio-overview-panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">OVERVIEW</p>
@@ -57,8 +147,15 @@ export function PortfolioView({
               <small>BUY1 / BUY2 opportunities now</small>
             </article>
           </div>
-        </section>
+          </section>
+        </>
       ) : null}
+      <PositionDetailsModal
+        onClose={() => setDetailPosition(null)}
+        onDeletePosition={onDeletePosition}
+        onEditPosition={onEditPosition}
+        position={detailPosition}
+      />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
 
 const DEFAULT_FORM = {
@@ -28,6 +28,14 @@ function buildForm(position) {
     volatilityPeriod: String(normalizeMonthsValue(position.volatilityPeriod, 36)),
     volatilityInterval: String(normalizeMonthsValue(position.volatilityInterval, 4)),
   };
+}
+
+function buildAllocationTargets(position, positions) {
+  return Object.fromEntries(
+    positions
+      .filter((item) => item.id !== position?.id && item.includeInAllocation)
+      .map((item) => [item.id, String(toNumber(item.targetAllocationPct ?? item.target, 0))])
+  );
 }
 
 function toNumber(value, fallback = 0) {
@@ -69,18 +77,36 @@ function sanitizeNumericInput(value, {allowNegative = false, allowDecimal = fals
 }
 
 export function PositionModal({mode = "create", variant = "position", onClose, onSubmit, position, positions = []}) {
-  const [form, setForm] = useState(buildForm(position));
   const isWatchlist = variant === "watchlist";
-  const [allocationTargets, setAllocationTargets] = useState(() =>
-    Object.fromEntries(
-      positions
-        .filter((item) => item.id !== position?.id && item.includeInAllocation)
-        .map((item) => [item.id, String(toNumber(item.targetAllocationPct ?? item.target, 0))])
-    )
+  const editablePositions = useMemo(
+    () => positions.filter((item) => (item.mode || "ACTIVE") !== "WATCHLIST"),
+    [positions]
   );
+  const [editorMode, setEditorMode] = useState(!isWatchlist && mode === "edit" ? "edit" : "add");
+  const [selectedPositionId, setSelectedPositionId] = useState(position?.id || editablePositions[0]?.id || "");
+  const activePosition = useMemo(() => {
+    if (isWatchlist || editorMode !== "edit") return position || null;
+    return editablePositions.find((item) => item.id === selectedPositionId) || null;
+  }, [editablePositions, editorMode, isWatchlist, position, selectedPositionId]);
+  const [form, setForm] = useState(buildForm(activePosition));
+  const [allocationTargets, setAllocationTargets] = useState(() => buildAllocationTargets(activePosition, positions));
+
+  useEffect(() => {
+    setEditorMode(!isWatchlist && mode === "edit" ? "edit" : "add");
+  }, [isWatchlist, mode]);
+
+  useEffect(() => {
+    if (position?.id) setSelectedPositionId(position.id);
+    else if (!selectedPositionId && editablePositions[0]?.id) setSelectedPositionId(editablePositions[0].id);
+  }, [editablePositions, position?.id, selectedPositionId]);
+
+  useEffect(() => {
+    setForm(buildForm(activePosition));
+    setAllocationTargets(buildAllocationTargets(activePosition, positions));
+  }, [activePosition, positions]);
 
   const allocation = useMemo(() => {
-    const otherIncluded = positions.filter((item) => item.id !== position?.id && item.includeInAllocation);
+    const otherIncluded = positions.filter((item) => item.id !== activePosition?.id && item.includeInAllocation);
     const rows = otherIncluded.map((item) => ({
       id: item.id,
       ticker: item.ticker,
@@ -99,7 +125,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
       remaining,
       valid,
     };
-  }, [allocationTargets, form.includeInAllocation, form.targetAllocationPct, position?.id, positions]);
+  }, [activePosition?.id, allocationTargets, form.includeInAllocation, form.targetAllocationPct, positions]);
 
   const volatilityValidation = useMemo(() => {
     const period = toNumber(form.volatilityPeriod, 0);
@@ -154,7 +180,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
     event.preventDefault();
     if (!form.ticker.trim() || (!isWatchlist && !allocation.valid) || !volatilityValidation.valid) return;
     onSubmit({
-      id: position?.id,
+      id: editorMode === "edit" ? activePosition?.id : position?.id,
       ticker: form.ticker.trim().toUpperCase(),
       company: form.company.trim(),
       type: form.type,
@@ -174,8 +200,34 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
   }
 
   return (
-    <ModalSheet title={isWatchlist ? "Watch list item" : mode === "edit" ? "Position settings" : "Position setup"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : mode === "edit" ? "Refine allocation, peak lookback, and risk thresholds for an existing holding." : "Add a position with its target allocation, peak lookback, and correction thresholds."} onClose={onClose}>
+    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : "Cash is managed here as position type: Cash ETF / Uninvested Cash."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
+        {!isWatchlist ? (
+          <div className="editor-mode-toggle modal-actions-wide">
+            <button className={`editor-mode-button ${editorMode === "add" ? "active" : ""}`} onClick={() => setEditorMode("add")} type="button">Add</button>
+            <button className={`editor-mode-button ${editorMode === "edit" ? "active" : ""}`} onClick={() => setEditorMode("edit")} type="button">Edit</button>
+          </div>
+        ) : null}
+
+        {!isWatchlist && editorMode === "edit" ? (
+          <div className="modal-section modal-actions-wide">
+            <div className="modal-section-heading">
+              <p className="modal-kicker">Ticker / cash bucket</p>
+              <h4>Select holding to edit</h4>
+            </div>
+            <label>
+              <span>Ticker / cash bucket</span>
+              <select value={selectedPositionId} onChange={(e) => setSelectedPositionId(e.target.value)}>
+                {editablePositions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.ticker}{item.company ? ` · ${item.company}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
+
         <div className="modal-section modal-actions-wide">
           <div className="modal-section-heading">
             <p className="modal-kicker">Position identity</p>
@@ -184,7 +236,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
           <div className="modal-grid modal-grid-identity">
             <label>
               <span>Ticker</span>
-              <input autoFocus disabled={mode === "edit"} placeholder="NVDA" value={form.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase())} />
+              <input autoFocus disabled={editorMode === "edit"} placeholder="NVDA" value={form.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase())} />
             </label>
             <label>
               <span>Company</span>
@@ -311,7 +363,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
         ) : null}
         <div className="modal-actions modal-actions-wide">
           <button className="ghost" onClick={onClose} type="button">Cancel</button>
-          <button className="primary" disabled={(!isWatchlist && !allocation.valid) || !volatilityValidation.valid} type="submit">{isWatchlist ? "Save watch item" : mode === "edit" ? "Save changes" : "Save position"}</button>
+          <button className="primary" disabled={(!isWatchlist && !allocation.valid) || !volatilityValidation.valid} type="submit">{isWatchlist ? "Save watch item" : editorMode === "edit" ? "Save changes" : "Save position"}</button>
         </div>
       </form>
     </ModalSheet>

@@ -9,6 +9,15 @@ function pnlAmount(position) {
   return Number(position.current || 0) - Number(position.invested || 0);
 }
 
+function TriggerBlock({position}) {
+  return (
+    <div className="trigger-block">
+      <span>CORR · {pctMagnitude(Math.abs(position.corr))} · {money(position.correctionTrigger, 0)}</span>
+      <span>DD_P · {pctMagnitude(Math.abs(position.ddPlan))} · {money(position.drawdownTrigger, 0)}</span>
+    </div>
+  );
+}
+
 function SignalPill({signal}) {
   const normalized = (signal || "HOLD").toLowerCase();
   return <span className={`signal-pill signal-${normalized}`}>{signal || "HOLD"}</span>;
@@ -53,6 +62,7 @@ export function PositionsView({
                 <th className="table-center">Target</th>
                 <th className="table-center">Drawdown</th>
                 <th className="table-center">Volatility</th>
+                <th className="table-center">Triggers</th>
                 <th className="table-center">Signal</th>
                 <th className="table-center">Actions</th>
               </tr>
@@ -81,6 +91,9 @@ export function PositionsView({
                   <td className="table-center">{pct(position.target)}</td>
                   <td className="table-center">{pct(position.dd)}</td>
                   <td className="table-center">{pctMagnitude(position.volatility)}</td>
+                  <td className="table-center">
+                    <TriggerBlock position={position} />
+                  </td>
                   <td className="table-center"><SignalPill signal={position.signal} /></td>
                   <td className="table-center">
                     <div className="row-actions row-actions-center">
@@ -132,6 +145,10 @@ export function PositionsView({
                     <div><span>Target</span><strong>{pct(position.target)}</strong></div>
                     <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
                     <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
+                    <div className="mobile-stat-grid-wide">
+                      <span>Triggers</span>
+                      <TriggerBlock position={position} />
+                    </div>
                   </div>
                   <div className="row-actions row-actions-mobile">
                     <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>
