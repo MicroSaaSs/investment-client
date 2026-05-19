@@ -1,16 +1,24 @@
 import React from "react";
-import {money, pct, pctMagnitude, sourceLabel} from "../utils/format";
+import { money, pct, pctMagnitude, sourceLabel } from "../utils/format";
+
+const DEFAULT_WATCH_SETTINGS = {
+  peakWindowMonths: 5,
+  volatilityWindowMonths: 36,
+  stepSizeMonths: 4,
+};
 
 function companyLabel(position) {
   return (position.company || "").trim() || "—";
 }
 
-function SourceBadge({source}) {
+function SourceBadge({ source }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
 
-export function WatchListView({positions, onCreateWatch, onDeleteWatch}) {
+export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
+  const watchSettings = DEFAULT_WATCH_SETTINGS;
+  const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Volatility window ${watchSettings.volatilityWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
   const sorted = [...positions].sort((left, right) => right.volatility - left.volatility);
   const highestVolatility = sorted[0] || null;
   const deepestDrawdown = [...positions].sort((left, right) => left.dd - right.dd)[0] || null;
@@ -22,7 +30,7 @@ export function WatchListView({positions, onCreateWatch, onDeleteWatch}) {
           <div>
             <p className="eyebrow">WATCH LIST</p>
             <h2>Potential holdings to monitor</h2>
-            <p className="panel-copy">Add tickers you are researching and keep an eye on price, peak pressure, and volatility before they become active positions.</p>
+            <p className="panel-copy">Add tickers you are researching and keep an eye on price, peak pressure, and volatility before they become active positions. {settingsLine}</p>
           </div>
           <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
         </div>
@@ -30,7 +38,7 @@ export function WatchListView({positions, onCreateWatch, onDeleteWatch}) {
           <div className="watchlist-empty-card">
             <p className="modal-kicker">READY FOR RESEARCH</p>
             <h3>No watch items yet</h3>
-            <p>Start with the names you are considering next. Each watch item keeps the market snapshot simple: price, peak, drawdown, and historical volatility.</p>
+            <p>Start with the names you are considering next. Each watch item keeps the market snapshot simple: price, peak, drawdown, and historical volatility. {settingsLine}</p>
             <button className="action-button action-button-secondary" onClick={onCreateWatch} type="button">Create first watch item</button>
           </div>
         </div>
@@ -44,7 +52,7 @@ export function WatchListView({positions, onCreateWatch, onDeleteWatch}) {
         <div>
           <p className="eyebrow">WATCH LIST</p>
           <h2>Potential holdings to monitor</h2>
-          <p className="panel-copy">Track price, peak pressure, and historical volatility before a position joins the portfolio.</p>
+          <p className="panel-copy">Track price, peak pressure, and historical volatility before a position joins the portfolio. {settingsLine}</p>
         </div>
         <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
       </div>
@@ -56,12 +64,12 @@ export function WatchListView({positions, onCreateWatch, onDeleteWatch}) {
         </article>
         <article className="watchlist-summary-card">
           <span>Highest volatility</span>
-          <strong>{highestVolatility ? `${highestVolatility.ticker} ${pctMagnitude(highestVolatility.volatility)}` : "—"}</strong>
+          <strong>{highestVolatility ? `${highestVolatility.ticker}: ${pctMagnitude(highestVolatility.volatility)}` : "—"}</strong>
           <small>{highestVolatility ? companyLabel(highestVolatility) : "No data yet"}</small>
         </article>
         <article className="watchlist-summary-card">
           <span>Deepest drawdown</span>
-          <strong>{deepestDrawdown ? `${deepestDrawdown.ticker} ${pct(deepestDrawdown.dd)}` : "—"}</strong>
+          <strong>{deepestDrawdown ? `${deepestDrawdown.ticker}: ${pct(deepestDrawdown.dd)}` : "—"}</strong>
           <small>{deepestDrawdown ? `Peak ${money(deepestDrawdown.peak, 2)}` : "No data yet"}</small>
         </article>
       </div>

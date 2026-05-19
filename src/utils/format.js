@@ -19,6 +19,10 @@ export function pct(value, digits = 1) {
   return `${sign}${Number(value || 0).toFixed(digits)}%`;
 }
 
+export function pctPlain(value, digits = 1) {
+  return `${Number(value || 0).toFixed(digits)}%`;
+}
+
 export function pctMagnitude(value, digits = 1) {
   return `${Number(value || 0).toFixed(digits)}%`;
 }

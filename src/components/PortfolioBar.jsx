@@ -37,23 +37,50 @@ export function PortfolioBar({
                 type="text"
                 value={draftName}
               />
-              <button className="toolbar-button" onClick={submitCreate} type="button">Create</button>
+              <button
+                aria-label="Create portfolio"
+                className="toolbar-icon-button"
+                onClick={submitCreate}
+                title="Create portfolio"
+                type="button"
+              >
+                <span aria-hidden="true">+</span>
+              </button>
             </div>
-            <button className="toolbar-button" disabled={!selected} onClick={() => selected && onRename(selected)} type="button">Rename</button>
-            <button className="toolbar-button toolbar-button-danger" disabled={!selected} onClick={() => selected && onDelete(selected)} type="button">Delete</button>
           </div>
         </div>
         <div className="portfolio-chip-row">
           {portfolios.map((portfolio) => (
-            <button
-              className={`portfolio-chip ${portfolio.id === portfolioId ? "active" : ""}`}
-              key={portfolio.id}
-              onClick={() => onSelect(portfolio.id)}
-              type="button"
-            >
-              <span>{portfolio.name}</span>
-              {portfolio.defaultPortfolio ? <small>DEFAULT</small> : null}
-            </button>
+            <div className={`portfolio-list-item ${portfolio.id === portfolioId ? "active" : ""}`} key={portfolio.id}>
+              <button
+                className={`portfolio-chip ${portfolio.id === portfolioId ? "active" : ""}`}
+                onClick={() => onSelect(portfolio.id)}
+                type="button"
+              >
+                <span>{portfolio.name}</span>
+                {portfolio.defaultPortfolio ? <small>DEFAULT</small> : null}
+              </button>
+              <div className="portfolio-list-item-actions">
+                <button
+                  aria-label={`Rename ${portfolio.name}`}
+                  className="toolbar-icon-button portfolio-list-item-action"
+                  onClick={() => onRename(portfolio)}
+                  title="Rename portfolio"
+                  type="button"
+                >
+                  <span aria-hidden="true">✎</span>
+                </button>
+                <button
+                  aria-label={`Delete ${portfolio.name}`}
+                  className="toolbar-icon-button toolbar-icon-button-danger portfolio-list-item-action"
+                  onClick={() => onDelete(portfolio)}
+                  title="Delete portfolio"
+                  type="button"
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </div>

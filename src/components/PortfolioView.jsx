@@ -1,19 +1,19 @@
 import React from "react";
-import {compactMoney, money, pct, pctMagnitude, sourceLabel} from "../utils/format";
-import {ModalSheet} from "./ModalSheet";
-import {PortfolioBar} from "./PortfolioBar";
+import { compactMoney, money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
+import { ModalSheet } from "./ModalSheet";
+import { PortfolioBar } from "./PortfolioBar";
 
-function SignalBadge({signal}) {
+function SignalBadge({ signal }) {
   const normalized = signal || "HOLD";
   return <span className={`signal-pill signal-${normalized.toLowerCase()}`}>{normalized}</span>;
 }
 
-function SourceBadge({source}) {
+function SourceBadge({ source }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
 
-function PositionDetailsModal({position, onClose, onEditPosition, onDeletePosition}) {
+function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosition }) {
   if (!position) return null;
 
   return (
@@ -41,8 +41,8 @@ function PositionDetailsModal({position, onClose, onEditPosition, onDeletePositi
           <div><span>Peak Price</span><strong>{money(position.peak, 2)}</strong></div>
           <div><span>PnL</span><strong>{pct(position.pnlPct)}</strong></div>
           <div><span>PnL $</span><strong>{money(Number(position.current || 0) - Number(position.invested || 0), 0)}</strong></div>
-          <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
-          <div><span>Target</span><strong>{pct(position.target)}</strong></div>
+          <div><span>Weight</span><strong>{pctPlain(position.weight)}</strong></div>
+          <div><span>Target</span><strong>{pctPlain(position.target)}</strong></div>
           <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
           <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
           <div><span>Corr Trigger</span><strong>{pctMagnitude(Math.abs(position.corr))}</strong><small>{money(position.correctionTrigger, 0)}</small></div>
@@ -73,16 +73,16 @@ export function PortfolioView({
 
   return (
     <main className="portfolio-view">
-      <PortfolioBar
-        portfolios={portfolios}
-        portfolioId={portfolioId}
-        onCreate={onCreate}
-        onDelete={onDelete}
-        onRename={onRename}
-        onSelect={onSelect}
-      />
-      {selected ? (
-        <>
+      <div className="portfolio-view-layout">
+        <PortfolioBar
+          portfolios={portfolios}
+          portfolioId={portfolioId}
+          onCreate={onCreate}
+          onDelete={onDelete}
+          onRename={onRename}
+          onSelect={onSelect}
+        />
+        {selected ? (
           <section className="panel portfolio-preview-panel">
             <div className="panel-heading panel-heading-inline">
               <div>
@@ -99,16 +99,20 @@ export function PortfolioView({
                     type="button"
                   >
                     <div className="portfolio-bar-position-main">
-                      <div className="portfolio-bar-position-head">
-                        <strong>{position.ticker}</strong>
-                        <SignalBadge signal={position.signal} />
+                      <div className="portfolio-bar-position-title-row">
+                        <div className="portfolio-bar-position-title-main">
+                          <div className="portfolio-bar-position-head">
+                            <strong>{position.ticker}</strong>
+                            <SignalBadge signal={position.signal} />
+                          </div>
+                          <span className="portfolio-bar-position-company">{position.company || "—"}</span>
+                        </div>
+                        <div className="portfolio-bar-position-values">
+                          <strong>{compactMoney(position.current)} · </strong>
+                          <strong>{Number(position.weight || 0).toFixed(1)}% · </strong>
+                          <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
+                        </div>
                       </div>
-                      <span className="portfolio-bar-position-company">{position.company || "—"}</span>
-                    </div>
-                    <div className="portfolio-bar-position-values">
-                      <strong>{compactMoney(position.current)}</strong>
-                      <span>{Number(position.weight || 0).toFixed(1)}%</span>
-                      <span>{Number(position.shares || 0).toLocaleString()} sh</span>
                     </div>
                   </button>
                 ))}
@@ -116,40 +120,41 @@ export function PortfolioView({
               </div>
             </div>
           </section>
-
+        ) : null}
+        {selected ? (
           <section className="panel portfolio-overview-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">OVERVIEW</p>
-              <h2>{selected.name} at a glance</h2>
-              <p className="panel-copy">Quick portfolio context before you jump into holdings, watch ideas, or volatility analysis.</p>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">OVERVIEW</p>
+                <h2>{selected.name} at a glance</h2>
+                <p className="panel-copy">Quick portfolio context before you jump into holdings, watch ideas, or volatility analysis.</p>
+              </div>
             </div>
-          </div>
-          <div className="portfolio-overview-grid">
-            <article className="portfolio-overview-card">
-              <span>Active holdings</span>
-              <strong>{activePositions.length}</strong>
-              <small>{includedCount} included in target model</small>
-            </article>
-            <article className="portfolio-overview-card">
-              <span>Cash positions</span>
-              <strong>{cashCount}</strong>
-              <small>Cash buckets and treasury ETF sleeves</small>
-            </article>
-            <article className="portfolio-overview-card">
-              <span>Portfolio value</span>
-              <strong>{compactMoney(metrics?.totalValue)}</strong>
-              <small>Current marked-to-market value</small>
-            </article>
-            <article className="portfolio-overview-card">
-              <span>Active signals</span>
-              <strong>{metrics?.activeSignals || 0}</strong>
-              <small>BUY1 / BUY2 opportunities now</small>
-            </article>
-          </div>
+            <div className="portfolio-overview-grid">
+              <article className="portfolio-overview-card">
+                <span>Active holdings</span>
+                <strong>{activePositions.length}</strong>
+                <small>{includedCount} included in target model</small>
+              </article>
+              <article className="portfolio-overview-card">
+                <span>Cash positions</span>
+                <strong>{cashCount}</strong>
+                <small>Cash buckets and treasury ETF sleeves</small>
+              </article>
+              <article className="portfolio-overview-card">
+                <span>Portfolio value</span>
+                <strong>{compactMoney(metrics?.totalValue)}</strong>
+                <small>Current marked-to-market value</small>
+              </article>
+              <article className="portfolio-overview-card">
+                <span>Active signals</span>
+                <strong>{metrics?.activeSignals || 0}</strong>
+                <small>BUY1 / BUY2 opportunities now</small>
+              </article>
+            </div>
           </section>
-        </>
-      ) : null}
+        ) : null}
+      </div>
       <PositionDetailsModal
         onClose={() => setDetailPosition(null)}
         onDeletePosition={onDeletePosition}

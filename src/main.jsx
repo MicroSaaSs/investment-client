@@ -106,6 +106,7 @@ function App() {
   const isTelegramMiniApp = Boolean(telegramInitData);
   const {showTopBar, showBottomNav} = useScrollNavVisibility();
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
+  const showLogout = currentUser?.authProvider !== "TELEGRAM";
 
   useEffect(() => {
     async function boot() {
@@ -428,6 +429,7 @@ function App() {
         <AppHeader
           onAccount={() => setModal("account")}
           onLogout={logout}
+          showLogout={showLogout}
         />
 
         <TopMenuBar

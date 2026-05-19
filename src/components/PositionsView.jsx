@@ -1,5 +1,5 @@
 import React from "react";
-import {money, pct, pctMagnitude, sourceLabel} from "../utils/format";
+import { money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
 
 function companyLabel(position) {
   return (position.company || "").trim() || "—";
@@ -9,7 +9,36 @@ function pnlAmount(position) {
   return Number(position.current || 0) - Number(position.invested || 0);
 }
 
-function TriggerBlock({position}) {
+function ValueBlock({ position }) {
+  return (
+    <div className="table-dual-value">
+      <span>Invest · {money(position.invested, 0)}</span>
+      <span>Curr · {money(position.current, 0)}</span>
+    </div>
+  );
+}
+
+function AllocationBlock({ position }) {
+  return (
+    <div className="table-dual-value">
+      <span>Target · {pctPlain(position.target)}</span>
+      <span>Curr · {pctPlain(position.weight)}</span>
+    </div>
+  );
+}
+
+function transactionSummary(transaction) {
+  const parts = [
+    transaction.date,
+    money(transaction.price, 0),
+  ];
+  if (Number(transaction.fees || 0)) {
+    parts.push(`${money(transaction.fees, 0)} fees`);
+  }
+  return parts.join(" · ");
+}
+
+function TriggerBlock({ position }) {
   return (
     <div className="trigger-block">
       <span>CORR · {pctMagnitude(Math.abs(position.corr))} · {money(position.correctionTrigger, 0)}</span>
@@ -18,12 +47,12 @@ function TriggerBlock({position}) {
   );
 }
 
-function SignalPill({signal}) {
+function SignalPill({ signal }) {
   const normalized = (signal || "HOLD").toLowerCase();
   return <span className={`signal-pill signal-${normalized}`}>{signal || "HOLD"}</span>;
 }
 
-function SourceBadge({source}) {
+function SourceBadge({ source }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
@@ -56,10 +85,10 @@ export function PositionsView({
                 <th>Company</th>
                 <th className="table-center">Price</th>
                 <th className="table-center">Peak Price</th>
-                <th className="table-center">PnL</th>
+                <th className="table-center">Value</th>
+                <th className="table-center">PnL %</th>
                 <th className="table-center">PnL $</th>
-                <th className="table-center">Weight</th>
-                <th className="table-center">Target</th>
+                <th className="table-center">Allocation</th>
                 <th className="table-center">Drawdown</th>
                 <th className="table-center">Volatility</th>
                 <th className="table-center">Triggers</th>
@@ -74,7 +103,7 @@ export function PositionsView({
                     <strong>{position.ticker}</strong>
                   </td>
                   <td>
-                    <div className="table-cell-stack">
+                    <div className="table-cell-stack table-company-cell">
                       <span>{companyLabel(position)}</span>
                     </div>
                   </td>
@@ -85,10 +114,18 @@ export function PositionsView({
                     </div>
                   </td>
                   <td className="table-center">{money(position.peak, 2)}</td>
+                  <td className="table-center">
+                    <div className="table-cell-stack table-cell-stack-center">
+                      <ValueBlock position={position} />
+                    </div>
+                  </td>
                   <td className="table-center">{pct(position.pnlPct)}</td>
                   <td className="table-center">{money(pnlAmount(position), 0)}</td>
-                  <td className="table-center">{pct(position.weight)}</td>
-                  <td className="table-center">{pct(position.target)}</td>
+                  <td className="table-center">
+                    <div className="table-cell-stack table-cell-stack-center">
+                      <AllocationBlock position={position} />
+                    </div>
+                  </td>
                   <td className="table-center">{pct(position.dd)}</td>
                   <td className="table-center">{pctMagnitude(position.volatility)}</td>
                   <td className="table-center">
@@ -114,46 +151,56 @@ export function PositionsView({
                 onClick={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
                 type="button"
               >
-              <div className="mobile-card-top">
-                <div>
-                  <strong>{position.ticker}</strong>
-                  <small>{companyLabel(position)}</small>
+                <div className="mobile-card-top">
+                  <div>
+                    <strong>{position.ticker}</strong>
+                    <small>{companyLabel(position)}</small>
+                  </div>
+                  <div className="mobile-card-top-meta">
+                    <SignalPill signal={position.signal} />
+                    <span className="mobile-expand-label">{expandedMobileCard === position.id ? "Hide" : "Open"}</span>
+                  </div>
                 </div>
-                <div className="mobile-card-top-meta">
-                  <SignalPill signal={position.signal} />
-                  <span className="mobile-expand-label">{expandedMobileCard === position.id ? "Hide" : "Open"}</span>
+                <div className="mobile-card-summary">
+                  <span>{money(position.price, 0)} price</span>
+                  <span>{money(pnlAmount(position), 0)} pnl $</span>
+                  <span>{pct(position.dd)} dd %</span>
                 </div>
-              </div>
-              <div className="mobile-card-summary">
-                <span>{money(position.current)} current</span>
-                <span>{pct(position.weight)} weight</span>
-                <span>{pct(position.dd)} drawdown</span>
-              </div>
               </button>
               {expandedMobileCard === position.id ? (
                 <>
                   <div className="mobile-stat-grid">
-                    <div>
-                      <span>Price</span>
-                      <strong>{money(position.price, 2)}</strong>
-                      <small><SourceBadge source={position.priceSource} /></small>
-                    </div>
                     <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
-                    <div><span>PnL %</span><strong>{pct(position.pnlPct)}</strong></div>
-                    <div><span>PnL $</span><strong>{money(pnlAmount(position), 0)}</strong></div>
-                    <div><span>Weight</span><strong>{pct(position.weight)}</strong></div>
-                    <div><span>Target</span><strong>{pct(position.target)}</strong></div>
-                    <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
-                    <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
                     <div>
-                      <span>Corr Trigger</span>
-                      <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
-                      <small>{money(position.correctionTrigger, 0)}</small>
+                      <span>Value</span>
+                      <div className="mobile-dual-value">
+                        <strong>Invest {money(position.invested, 0)}</strong>
+                        <small>Curr {money(position.current, 0)}</small>
+                      </div>
                     </div>
+                    <div><span>PnL %</span><strong>{pct(position.pnlPct)}</strong></div>
                     <div>
-                      <span>DD_P Trigger</span>
-                      <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
-                      <small>{money(position.drawdownTrigger, 0)}</small>
+                      <span>Allocation</span>
+                      <div className="mobile-dual-value">
+                        <strong>Target {pctPlain(position.target)}</strong>
+                        <small>Curr {pctPlain(position.weight)}</small>
+                      </div>
+                    </div>
+                    <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
+                    <div className="mobile-trigger-cell">
+                      <span>Triggers</span>
+                      <div className="mobile-trigger-block">
+                        <div className="trigger-value-row">
+                          <strong>CORR</strong>
+                          <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
+                          <small>{money(position.correctionTrigger, 0)}</small>
+                        </div>
+                        <div className="trigger-value-row">
+                          <strong>DD_P</strong>
+                          <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
+                          <small>{money(position.drawdownTrigger, 0)}</small>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="row-actions row-actions-mobile">
@@ -214,18 +261,33 @@ export function PositionsView({
               <div className="mobile-card-top">
                 <div>
                   <strong>{transaction.ticker}</strong>
-                  <small>{transaction.date}</small>
                 </div>
                 <span className="signal-pill signal-hold">{transaction.type}</span>
               </div>
-              <div className="mobile-stat-grid">
-                <div><span>Shares</span><strong>{Number(transaction.shares || 0).toLocaleString()}</strong></div>
-                <div><span>Price</span><strong>{money(transaction.price, 2)}</strong></div>
-                <div><span>Fees</span><strong>{money(transaction.fees, 2)}</strong></div>
-              </div>
-              <div className="row-actions row-actions-mobile">
-                <button className="mini-button" onClick={() => onEditTransaction(transaction)} type="button">Edit</button>
-                <button className="mini-button mini-button-danger" onClick={() => onDeleteTransaction(transaction)} type="button">Delete</button>
+              <div className="mobile-card-transaction-row">
+                <div className="mobile-card-transaction-summary">
+                  <span>{transactionSummary(transaction)}</span>
+                </div>
+                <div className="mobile-card-transaction-actions">
+                  <button
+                    aria-label={`Edit ${transaction.ticker} transaction`}
+                    className="toolbar-icon-button mobile-transaction-action"
+                    onClick={() => onEditTransaction(transaction)}
+                    title="Edit transaction"
+                    type="button"
+                  >
+                    <span aria-hidden="true">✎</span>
+                  </button>
+                  <button
+                    aria-label={`Delete ${transaction.ticker} transaction`}
+                    className="toolbar-icon-button toolbar-icon-button-danger mobile-transaction-action"
+                    onClick={() => onDeleteTransaction(transaction)}
+                    title="Delete transaction"
+                    type="button"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
               </div>
             </article>
           ))}
