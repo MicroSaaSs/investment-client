@@ -145,9 +145,15 @@ export function PositionsView({
                     <div><span>Target</span><strong>{pct(position.target)}</strong></div>
                     <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
                     <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
-                    <div className="mobile-stat-grid-wide">
-                      <span>Triggers</span>
-                      <TriggerBlock position={position} />
+                    <div>
+                      <span>Corr Trigger</span>
+                      <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
+                      <small>{money(position.correctionTrigger, 0)}</small>
+                    </div>
+                    <div>
+                      <span>DD_P Trigger</span>
+                      <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
+                      <small>{money(position.drawdownTrigger, 0)}</small>
                     </div>
                   </div>
                   <div className="row-actions row-actions-mobile">

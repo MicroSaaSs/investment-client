@@ -194,6 +194,7 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   min-height: 48px;
   padding: 12px 18px;
   border: 1px solid var(--line);
@@ -206,6 +207,11 @@ button {
   font-weight: 700;
   transition: 0.2s ease;
 }
+.top-menu-action-icon {
+  display: none;
+  font-size: 18px;
+  line-height: 1;
+}
 .top-menu-action-button:hover {
   background: #f9fbff;
   transform: translateY(-1px);
@@ -217,6 +223,9 @@ button {
 }
 .top-menu-action-label {
   line-height: 1;
+}
+.top-menu-action-label-mobile {
+  display: none;
 }
 
 @media (min-width: 721px) {
@@ -1843,7 +1852,7 @@ tbody td small {
     gap: 0;
   }
   .portfolio-bar-summary {
-    display: none;
+    display: grid;
   }
   .portfolio-mobile-summary {
     display: grid;
@@ -1960,11 +1969,11 @@ tbody td small {
     transform: translateY(0);
   }
   .top-menu-bar-inner {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    padding: 12px 16px 14px;
+    padding: 12px 14px;
     border-radius: 0;
     background: rgba(255, 255, 255, 0.95);
     border: none;
@@ -1973,18 +1982,23 @@ tbody td small {
     backdrop-filter: blur(12px);
   }
   .top-menu-portfolio {
-    width: 100%;
-    max-width: none;
+    width: auto;
+    max-width: calc(100% - 192px);
     min-width: 0;
-    min-height: 0;
-    padding: 14px 18px;
-    border-radius: 24px;
+    min-height: 56px;
+    padding: 0 22px;
+    border-radius: 28px;
+    flex: 0 1 auto;
+  }
+  .top-menu-portfolio strong {
+    font-size: 15px;
   }
   .top-menu-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    align-items: center;
     gap: 12px;
-    margin-left: 0;
+    margin-left: auto;
+    flex: 0 0 auto;
   }
   .top-menu-action-button {
     min-width: 0;
@@ -2021,10 +2035,11 @@ tbody td small {
     inset-inline: 0;
     bottom: 0;
     z-index: 40;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px));
     background: rgba(255, 255, 255, 0.96);
     border-top: 1px solid rgba(18, 48, 95, 0.08);
     box-shadow: 0 -12px 24px rgba(18, 48, 95, 0.08);
@@ -2040,8 +2055,10 @@ tbody td small {
   .tab-nav-mobile button {
     display: grid;
     justify-items: center;
-    gap: 3px;
-    padding: 9px 6px 10px;
+    gap: 6px;
+    width: 100%;
+    min-width: 56px;
+    padding: 9px 8px 10px;
     border: none;
     border-radius: 20px;
     background: transparent;
@@ -2052,6 +2069,10 @@ tbody td small {
   .tab-nav-mobile button.active {
     background: #13213d;
     color: #fff;
+  }
+  .tab-nav-mobile-item-wrap {
+    flex: 1 1 0;
+    display: flex;
   }
   .portfolio-bar-top {
     flex-direction: row;
@@ -2245,6 +2266,42 @@ tbody td small {
   .metric-detail-value {
     text-align: right;
   }
+  .portfolio-bar-summary-list {
+    grid-auto-columns: max-content;
+  }
+  .portfolio-bar-position {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 9px 10px;
+    width: fit-content;
+    min-width: 164px;
+  }
+  .portfolio-bar-position-main {
+    gap: 2px;
+  }
+  .portfolio-bar-position-company {
+    display: none !important;
+  }
+  .portfolio-bar-position-head {
+    gap: 8px;
+  }
+  .portfolio-bar-position-head strong {
+    font-size: 14px;
+  }
+  .portfolio-bar-position-values {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-align: left;
+    white-space: nowrap;
+    justify-items: unset;
+  }
+  .portfolio-bar-position-values strong,
+  .portfolio-bar-position-values span {
+    font-size: 11px;
+    line-height: 1.2;
+  }
 }
 
 @media (max-width: 420px) {
@@ -2275,24 +2332,37 @@ tbody td small {
     padding: 12px 13px;
     border-radius: 16px;
   }
-  .top-menu-bar-inner {
-    gap: 10px;
-    padding: 10px 12px 12px;
-  }
   .top-menu-action-button {
-    width: 100%;
-    min-height: 0;
-    padding: 12px 10px;
+    width: 72px;
+    min-height: 56px;
+    padding: 8px 8px 9px;
     border-radius: 20px;
-    font-size: 13px;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(18, 48, 95, 0.08);
+  }
+  .top-menu-action-icon {
+    display: block;
+    font-size: 18px;
+  }
+  .top-menu-action-label-desktop {
+    display: none;
+  }
+  .top-menu-action-label-mobile {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
   }
   .tab-nav-mobile {
-    gap: 5px;
-    padding-inline: 8px;
+    gap: 10px;
+    padding-inline: 18px;
   }
   .tab-nav-mobile button {
-    padding: 8px 4px 9px;
-    border-radius: 18px;
+    gap: 8px;
+    padding: 10px 8px 11px;
+    border-radius: 20px;
   }
   .chart-panel .recharts-responsive-container {
     height: 248px !important;
@@ -2329,12 +2399,28 @@ tbody td small {
     grid-template-columns: 1fr;
   }
   .portfolio-bar-summary-list {
-    grid-auto-columns: minmax(220px, 248px);
+    grid-auto-columns: minmax(176px, 196px);
   }
   .portfolio-bar-position,
   .metric-detail-row {
     grid-template-columns: 1fr;
     align-items: flex-start;
+  }
+  .portfolio-bar-position {
+    gap: 6px;
+    padding: 9px 10px;
+  }
+  .portfolio-bar-position-main {
+    gap: 2px;
+  }
+  .portfolio-bar-position-company {
+    display: none !important;
+  }
+  .portfolio-bar-position-head {
+    gap: 8px;
+  }
+  .portfolio-bar-position-head strong {
+    font-size: 14px;
   }
   .portfolio-bar-position-values,
   .metric-detail-value {
@@ -2342,6 +2428,16 @@ tbody td small {
     white-space: normal;
   }
   .portfolio-bar-position-values {
-    justify-items: start;
+    display: flex;
+    align-items: center;
+    justify-items: unset;
+    gap: 6px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .portfolio-bar-position-values strong,
+  .portfolio-bar-position-values span {
+    font-size: 11px;
+    line-height: 1.2;
   }
 }

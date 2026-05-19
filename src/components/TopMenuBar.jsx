@@ -28,7 +28,9 @@ export function TopMenuBar({
             title="Add position"
             type="button"
           >
-            <span className="top-menu-action-label">Add/Edit Position</span>
+            <span aria-hidden="true" className="top-menu-action-icon">💼</span>
+            <span className="top-menu-action-label top-menu-action-label-desktop">Add/Edit Position</span>
+            <span className="top-menu-action-label top-menu-action-label-mobile">Pos</span>
           </button>
           <button
             aria-label="Add transaction"
@@ -38,7 +40,9 @@ export function TopMenuBar({
             title="Add transaction"
             type="button"
           >
-            <span className="top-menu-action-label">Add Transaction</span>
+            <span aria-hidden="true" className="top-menu-action-icon">🧾</span>
+            <span className="top-menu-action-label top-menu-action-label-desktop">Add Transaction</span>
+            <span className="top-menu-action-label top-menu-action-label-mobile">Txn</span>
           </button>
         </div>
       </div>
