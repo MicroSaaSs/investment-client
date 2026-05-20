@@ -2548,14 +2548,31 @@ tbody td > small {
     padding: 14px;
   }
   .portfolio-chip-row {
-    display: flex;
+    display: grid;
     margin-top: 6px;
-    overflow: auto;
-    padding: 4px 4px 10px;
+    overflow: visible;
+    padding: 4px 0 10px;
+    gap: 10px;
+  }
+  .portfolio-list-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .portfolio-list-item-actions {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .portfolio-list-item-action {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    font-size: 16px;
   }
   .portfolio-chip {
-    min-width: 132px;
-    width: auto;
+    min-width: 0;
+    width: 100%;
     padding: 12px 13px;
     border-radius: 16px;
   }
