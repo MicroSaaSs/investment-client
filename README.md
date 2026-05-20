@@ -1,8 +1,24 @@
 # investment-client
 
-React + Vite Telegram Mini App client.
+React + Vite investment client for both:
 
-## Env
+- desktop browser use
+- Telegram Mini App use
+
+## Main UX areas
+
+- `Portfolios`: manage portfolios, preview positions, and review overview cards
+- `Holdings`: full position table on desktop and compact expandable cards on mobile
+- `Watch List`: watchlist entries with peak / volatility defaults shown in the description
+- `Risk`: risk settings, targets, and volatility controls
+
+The client has separate responsive behavior for desktop and mobile, including:
+
+- mobile top action bar + bottom tab nav
+- portfolio preview cards and position detail modals
+- compact transaction cards on mobile
+
+## Environment
 
 Tracked template:
 
@@ -10,30 +26,53 @@ Tracked template:
 .env.example
 ```
 
-For local development, copy the development template to a real Vite env file:
+For local development:
 
 ```bash
 cp .env.example .env.development.local
 ```
 
-Browser users can authenticate either with email/password or with Google Sign-In.
-For Google browser login, set `VITE_GOOGLE_CLIENT_ID` to your Google Web client ID.
+Important variables:
 
-## Run
+- `VITE_API_BASE_URL`: backend base URL
+- `VITE_GOOGLE_CLIENT_ID`: Google Web client ID for browser Google Sign-In
+- `VITE_BASE_PATH`: optional Pages base path override for production builds
+
+## Local run
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Deploy
+Default local URL:
 
-GitHub Pages deploy runs automatically from `.github/workflows/deploy-pages.yml` on every push to `main`.
-
-The production build uses:
-
-```bash
-.env.production
+```text
+http://localhost:5173
 ```
 
-For project Pages, Vite is built with the repo base path automatically.
+## Build
+
+```bash
+npm run build
+```
+
+## Deploy
+
+GitHub Pages deploy runs from:
+
+```text
+.github/workflows/deploy-gh-pages.yml
+```
+
+On deploy, the workflow builds the app with:
+
+- `VITE_BASE_PATH=/${repo-name}/`
+- production API base URL
+- public Google client ID
+
+## Auth behavior
+
+- browser users can sign in with email/password or Google
+- Telegram Mini App users can sign in through Telegram auth
+- for Telegram users, the client hides the normal logout option
