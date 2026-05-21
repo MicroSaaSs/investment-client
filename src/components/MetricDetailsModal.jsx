@@ -12,7 +12,6 @@ function PositionMiniRow({position, mode}) {
     value: `${money(position.current)} · ${Number(position.weight || 0).toFixed(1)}% · ${Number(position.shares || 0).toLocaleString()} sh`,
     invested: `${money(position.invested)} · ${Number(position.shares || 0).toLocaleString()} sh`,
     pnl: `${pct(position.pnlPct)} · ${money((Number(position.current || 0) - Number(position.invested || 0)), 0)}`,
-    signal: `${position.signal} · ${money(position.price, 2)} · DD ${pct(position.dd)} · peak ${money(position.peak, 2)}`,
   };
 
   return (
@@ -24,7 +23,15 @@ function PositionMiniRow({position, mode}) {
         </div>
         <span>{position.company || "—"}</span>
       </div>
-      <div className="metric-detail-value">{valueMap[mode]}</div>
+      <div className="metric-detail-value">
+        {mode === "signal" ? (
+          <div className="metric-detail-inline-list">
+            <span>{money(position.price, 2)}</span>
+            <span>DD {pct(position.dd)}</span>
+            <span>Peak {money(position.peak, 2)}</span>
+          </div>
+        ) : valueMap[mode]}
+      </div>
     </div>
   );
 }

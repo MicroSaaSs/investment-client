@@ -1,6 +1,7 @@
 import React from "react";
 
 export function TopMenuBar({
+  embedded = false,
   hasPortfolio,
   onAddPosition,
   onAddTransaction,
@@ -9,7 +10,7 @@ export function TopMenuBar({
   visible = true,
 }) {
   return (
-    <div className={`top-menu-bar ${visible ? "is-visible" : "is-hidden"}`}>
+    <div className={`top-menu-bar ${embedded ? "top-menu-bar-embedded" : ""} ${visible ? "is-visible" : "is-hidden"}`}>
       <div className="top-menu-bar-inner">
         <button
           className="top-menu-portfolio"

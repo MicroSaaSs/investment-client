@@ -45,7 +45,7 @@ button {
 }
 
 .app-shell {
-  padding: 34px 24px 48px;
+  padding: 10px 24px 10px;
 }
 .app {
   max-width: 1320px;
@@ -62,16 +62,21 @@ button {
 
 .app-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 16px;
 }
+.app-header-middle {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .app-heading h1 {
-  margin: 6px 0 0;
-  font-size: 40px;
+  margin: 0;
+  font-size: 32px;
   line-height: 0.98;
   letter-spacing: -0.05em;
+  white-space: nowrap;
 }
 .header-actions {
   display: flex;
@@ -138,6 +143,17 @@ button {
   margin-bottom: 18px;
   transition: transform 0.28s ease;
 }
+.top-menu-bar-embedded {
+  position: static;
+  top: auto;
+  z-index: auto;
+  margin: 0;
+  transition: none;
+}
+.top-menu-bar-embedded.is-hidden,
+.top-menu-bar-embedded.is-visible {
+  transform: none;
+}
 .top-menu-bar.is-hidden {
   transform: translateY(calc(-100% - 10px));
 }
@@ -155,6 +171,31 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.74);
   backdrop-filter: blur(16px);
   box-shadow: 0 14px 34px rgba(18, 48, 95, 0.12);
+}
+.top-menu-bar-embedded .top-menu-bar-inner {
+  padding: 8px 10px;
+  margin: 0 6px;
+  border-radius: 22px;
+}
+.top-menu-bar-embedded .top-menu-portfolio {
+  min-width: 180px;
+  max-width: 300px;
+  padding: 10px 14px;
+  border-radius: 18px;
+}
+.top-menu-bar-embedded .top-menu-portfolio strong {
+  font-size: 14px;
+}
+.top-menu-bar-embedded .top-menu-actions {
+  gap: 8px;
+}
+.top-menu-bar-embedded .top-menu-action-button {
+  min-height: 40px;
+  padding: 9px 14px;
+  border-radius: 16px;
+}
+.top-menu-bar-embedded .top-menu-action-label-desktop {
+  font-size: 14px;
 }
 .top-menu-portfolio {
   min-width: 240px;
@@ -226,6 +267,12 @@ button {
 }
 .top-menu-action-label-mobile {
   display: none;
+}
+
+@media (min-width: 721px) {
+  .top-menu-bar:not(.top-menu-bar-embedded) {
+    display: none;
+  }
 }
 
 @media (min-width: 721px) {
@@ -584,6 +631,38 @@ button {
   color: #62738f;
   font-size: 14px;
   line-height: 1.45;
+}
+.panel-subtabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.panel-subtab {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(18, 48, 95, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(240, 246, 255, 0.92));
+  color: #233454;
+  text-align: left;
+  box-shadow: var(--shadow-soft);
+}
+.panel-subtab .eyebrow {
+  margin: 0;
+}
+.panel-subtab strong {
+  font-size: 16px;
+  letter-spacing: -0.04em;
+}
+.panel-subtab.active {
+  background: linear-gradient(180deg, #172f5f, #203d73);
+  border-color: rgba(18, 48, 95, 0.22);
+  color: #fff;
+}
+.panel-subtab.active .eyebrow {
+  color: rgba(232, 239, 252, 0.78);
 }
 .portfolio-toolbar {
   display: flex;
@@ -1018,6 +1097,19 @@ button {
   overflow: auto;
   margin-top: 18px;
 }
+.positions-desktop-table,
+.transactions-desktop-table {
+  max-height: 70vh;
+  overflow: auto;
+}
+.positions-desktop-table thead th,
+.transactions-desktop-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(252, 253, 255, 0.98);
+  backdrop-filter: blur(10px);
+}
 .mobile-list {
   display: none;
 }
@@ -1114,8 +1206,18 @@ button {
   font-weight: 700;
   white-space: nowrap;
 }
+.metric-detail-inline-list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.metric-detail-inline-list span {
+  white-space: nowrap;
+}
 .metric-detail-row-signal .metric-detail-value {
-  max-width: 320px;
+  max-width: 360px;
   white-space: normal;
 }
 .metric-detail-empty {
@@ -1192,6 +1294,20 @@ tbody td > small {
   display: block;
   margin-top: 5px;
   color: #6c7d99;
+}
+.shares-tag {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #52647f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .table-cell-stack {
   display: grid;
@@ -2124,6 +2240,16 @@ tbody td > small {
   .header-actions {
     justify-content: flex-start;
   }
+  .panel-subtabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .panel-subtab {
+    min-width: 0;
+  }
+  .app-heading h1 {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2133,6 +2259,9 @@ tbody td > small {
   .app-header {
     margin-bottom: 14px;
     gap: 16px;
+  }
+  .app-header-middle {
+    display: none;
   }
   .app-heading h1 {
     font-size: 26px;

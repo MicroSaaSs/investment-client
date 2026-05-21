@@ -200,7 +200,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
   }
 
   return (
-    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : "Cash is managed here as position type: Cash ETF / Uninvested Cash."} onClose={onClose}>
+    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : "Cash ETF uses real market pricing. Cash bucket is uninvested cash fixed at $1."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
         {!isWatchlist ? (
           <div className="editor-mode-toggle modal-actions-wide">
@@ -249,6 +249,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
                 <option value="CASH_ETF">Cash ETF</option>
                 <option value="CASH">Cash bucket</option>
               </select>
+              <small>{form.type === "CASH_ETF" ? "Ticker-based cash sleeve with live or delayed market price." : form.type === "CASH" ? "Manual uninvested cash bucket priced at $1." : "Standard market-priced holding."}</small>
             </label>
           </div>
         </div>

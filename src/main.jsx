@@ -519,6 +519,17 @@ function App() {
     <div className="app-shell">
       <div className="app">
         <AppHeader
+          middle={(
+            <TopMenuBar
+              embedded
+              hasPortfolio={Boolean(selectedPortfolio)}
+              onAddPosition={() => setModal("position")}
+              onAddTransaction={() => setModal("transaction")}
+              onOpenPortfolioSwitch={() => setModal("switch-portfolio")}
+              selectedPortfolioName={selectedPortfolio?.name || ""}
+              visible
+            />
+          )}
           onAccount={() => setModal("account")}
           onLogout={logout}
           showLogout={showLogout}

@@ -66,18 +66,45 @@ export function PositionsView({
   onEditTransaction,
 }) {
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
+  const [activeTab, setActiveTab] = React.useState("positions");
 
   return (
     <div className="positions-layout">
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">POSITIONS</p>
-            <h2>Holdings and model drift</h2>
-            <p className="panel-copy">Track live pricing, target weights, and drawdown pressure across your current positions.</p>
+            <div className="panel-subtabs" role="tablist" aria-label="Positions content tabs">
+              <button
+                aria-selected={activeTab === "positions"}
+                className={`panel-subtab ${activeTab === "positions" ? "active" : ""}`}
+                onClick={() => setActiveTab("positions")}
+                role="tab"
+                type="button"
+              >
+                <span className="eyebrow">POSITIONS</span>
+                <strong>Holdings and model drift</strong>
+              </button>
+              <button
+                aria-selected={activeTab === "transactions"}
+                className={`panel-subtab ${activeTab === "transactions" ? "active" : ""}`}
+                onClick={() => setActiveTab("transactions")}
+                role="tab"
+                type="button"
+              >
+                <span className="eyebrow">TRANSACTIONS</span>
+                <strong>Execution history</strong>
+              </button>
+            </div>
+            <p className="panel-copy">
+              {activeTab === "positions"
+                ? "Track live pricing, target weights, and drawdown pressure across your current positions."
+                : "Review the trades that built this portfolio and keep every entry editable."}
+            </p>
           </div>
         </div>
-        <div className="table-wrap desktop-table">
+        {activeTab === "positions" ? (
+        <>
+        <div className="table-wrap desktop-table positions-desktop-table">
           <table>
             <thead>
               <tr>
@@ -100,7 +127,10 @@ export function PositionsView({
               {positions.map((position) => (
                 <tr key={position.id}>
                   <td>
-                    <strong>{position.ticker}</strong>
+                    <div className="table-cell-stack">
+                      <strong>{position.ticker}</strong>
+                      <small className="shares-tag">{Number(position.shares || 0).toLocaleString()} sh</small>
+                    </div>
                   </td>
                   <td>
                     <div className="table-cell-stack table-company-cell">
@@ -212,17 +242,10 @@ export function PositionsView({
             </article>
           ))}
         </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">TRANSACTIONS</p>
-            <h2>Execution history</h2>
-            <p className="panel-copy">Review the trades that built this portfolio and keep every entry editable.</p>
-          </div>
-        </div>
-        <div className="table-wrap desktop-table">
+        </>
+        ) : (
+        <>
+        <div className="table-wrap desktop-table transactions-desktop-table">
           <table>
             <thead>
               <tr>
@@ -292,6 +315,8 @@ export function PositionsView({
             </article>
           ))}
         </div>
+        </>
+        )}
       </section>
     </div>
   );
