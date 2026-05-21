@@ -6,6 +6,7 @@ const TABS = [
   {id: "positions", label: "POSITIONS", short: "Holdings", icon: "💼"},
   {id: "watchlist", label: "WATCH LIST", short: "Watch", icon: "👀"},
   {id: "volatility", label: "VOLATILITY", short: "Risk", icon: "📉"},
+  {id: "ai", label: "AI", short: "AI", icon: "🤖"},
 ];
 
 export function TabNav({tab, onChange, visible = true}) {

@@ -6,9 +6,19 @@ async function request(path, options = {}) {
   const headers = {"Content-Type": "application/json", ...(options.headers || {})};
   if (token) headers.Authorization = `Bearer ${token}`;
   const response = await fetch(`${API_BASE_URL}${path}`, {...options, headers});
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-  if (response.status === 204) return null;
   const text = await response.text();
+  if (!response.ok) {
+    try {
+      const payload = text ? JSON.parse(text) : null;
+      throw new Error(payload?.message || payload?.error || payload?.reason || `${response.status} ${response.statusText}`);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(text || `${response.status} ${response.statusText}`);
+      }
+      throw error;
+    }
+  }
+  if (response.status === 204) return null;
   return text ? JSON.parse(text) : null;
 }
 
@@ -56,12 +66,15 @@ export const api = {
   },
   getCurrentUser: () => request("/api/auth/me"),
   createTelegramLinkSession: () => request("/api/auth/telegram/link-session", {method: "POST"}),
+  getAiSettings: () => request("/api/ai/settings"),
+  updateAiSettings: (payload) => request("/api/ai/settings", {method: "PUT", body: JSON.stringify(payload)}),
+  getAiSummary: (portfolioId) => request(`/api/ai/summary?portfolioId=${encodeURIComponent(portfolioId)}`),
   getPortfolios: () => request("/api/portfolios"),
   createPortfolio: (payload) => request("/api/portfolios", {method: "POST", body: JSON.stringify(payload)}),
   updatePortfolio: (id, payload) => request(`/api/portfolios/${id}`, {method: "PUT", body: JSON.stringify(payload)}),
   deletePortfolio: (id) => request(`/api/portfolios/${id}`, {method: "DELETE"}),
   getMetrics: (id) => request(`/api/portfolios/${id}/metrics`),
-  getEquityCurve: (id) => request(`/api/portfolios/${id}/equity-curve`),
+  getEquityCurve: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/equity-history?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
   getPositions: (id) => request(`/api/portfolios/${id}/positions`),
   createPosition: (id, payload) => request(`/api/portfolios/${id}/positions`, {method: "POST", body: JSON.stringify(payload)}),
   updatePosition: (portfolioId, id, payload) => request(`/api/portfolios/${portfolioId}/positions/${id}`, {method: "PUT", body: JSON.stringify(payload)}),

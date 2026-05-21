@@ -10,6 +10,7 @@ import {DashboardView} from "./components/DashboardView";
 import {PositionsView} from "./components/PositionsView";
 import {WatchListView} from "./components/WatchListView";
 import {VolatilityView} from "./components/VolatilityView";
+import {AiView} from "./components/AiView";
 import {EmptyState} from "./components/EmptyState";
 import {PortfolioModal} from "./components/PortfolioModal";
 import {ConfirmModal} from "./components/ConfirmModal";
@@ -24,14 +25,6 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 function getTelegramInitData() {
   const initData = window.Telegram?.WebApp?.initData;
   return typeof initData === "string" && initData.trim() ? initData : "";
-}
-
-function buildEquityFromMetrics(nextMetrics) {
-  if (!nextMetrics) return [];
-  return [
-    {day: "Invested", value: nextMetrics.invested || 0},
-    {day: "Current", value: nextMetrics.totalValue || 0},
-  ];
 }
 
 function splitAllocationPayload(payload) {
@@ -95,6 +88,19 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [equity, setEquity] = useState([]);
+  const [equityRange, setEquityRange] = useState("month");
+  const [equityMode, setEquityMode] = useState("daily");
+  const [aiSettings, setAiSettings] = useState({
+    notificationsEnabled: false,
+    schedule: "DAILY",
+    weekday: "MONDAY",
+    monthDay: 1,
+    time: "17:45",
+    portfolioId: "",
+  });
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiSummaryBusy, setAiSummaryBusy] = useState(false);
+  const [aiSettingsBusy, setAiSettingsBusy] = useState(false);
   const [tab, setTab] = useState("dashboard");
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null);
@@ -190,8 +196,25 @@ function App() {
 
   useEffect(() => {
     if (!portfolioId) return;
+    setAiSummary(null);
     refreshPortfolioViews(portfolioId).catch((e) => setError(String(e.message || e)));
-  }, [portfolioId]);
+  }, [portfolioId, equityRange, equityMode]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.getAiSettings()
+      .then((settings) => {
+        setAiSettings({
+          notificationsEnabled: settings.notificationsEnabled,
+          schedule: settings.schedule || "DAILY",
+          weekday: settings.weekday || "MONDAY",
+          monthDay: settings.monthDay || 1,
+          time: settings.time || "17:45",
+          portfolioId: settings.portfolioId || "",
+        });
+      })
+      .catch((e) => setError(String(e.message || e)));
+  }, [isAuthenticated]);
 
   async function loadPortfolios() {
     const list = await api.getPortfolios();
@@ -205,17 +228,26 @@ function App() {
 
   async function refreshPortfolioViews(id = portfolioId) {
     if (!id) return;
-    const [nextMetrics, nextPositions, nextTransactions] = await Promise.all([
+    const [nextMetrics, nextPositions, nextTransactions, nextEquity] = await Promise.all([
       api.getMetrics(id),
       api.getPositions(id),
       api.getTransactions(id),
+      api.getEquityCurve(id, equityRange, equityMode),
     ]);
     startTransition(() => {
       setMetrics(nextMetrics);
-      setEquity(buildEquityFromMetrics(nextMetrics));
+      setEquity(nextEquity.points || []);
       setRawPositions(nextPositions);
       setTransactions(nextTransactions);
     });
+  }
+
+  function updateAiSetting(key, value) {
+    setAiSettings((current) => ({
+      ...current,
+      [key]: value,
+      portfolioId: key === "portfolioId" ? value : current.portfolioId || portfolioId,
+    }));
   }
 
   function updateAuthField(key, value) {
@@ -387,6 +419,15 @@ function App() {
     setPortfolioId("");
     setMetrics(null);
     setEquity([]);
+    setAiSettings({
+      notificationsEnabled: false,
+      schedule: "DAILY",
+      weekday: "MONDAY",
+      monthDay: 1,
+      time: "17:45",
+      portfolioId: "",
+    });
+    setAiSummary(null);
     setRawPositions([]);
     setTransactions([]);
     setError("");
@@ -395,6 +436,57 @@ function App() {
     setLinkSession(null);
     setTelegramLinkCode("");
     setEmailLinkForm({email: "", password: ""});
+  }
+
+  async function saveAiSettings() {
+    if (!portfolioId) return;
+    setError("");
+    setAiSettingsBusy(true);
+    try {
+      const saved = await api.updateAiSettings({
+        notificationsEnabled: aiSettings.notificationsEnabled,
+        schedule: aiSettings.schedule,
+        weekday: aiSettings.weekday,
+        monthDay: aiSettings.monthDay,
+        time: aiSettings.time,
+        portfolioId,
+      });
+      setAiSettings({
+        notificationsEnabled: saved.notificationsEnabled,
+        schedule: saved.schedule || "DAILY",
+        weekday: saved.weekday || "MONDAY",
+        monthDay: saved.monthDay || 1,
+        time: saved.time || "17:45",
+        portfolioId: saved.portfolioId || "",
+      });
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setAiSettingsBusy(false);
+    }
+  }
+
+  async function fetchAiSummary() {
+    if (!portfolioId) return;
+    setError("");
+    setAiSummaryBusy(true);
+    try {
+      const response = await api.getAiSummary(portfolioId);
+      setAiSummary(response);
+    } catch (e) {
+      if (String(e.message || e).includes("once per day")) {
+        setAiSummary((current) => ({
+          ...current,
+          portfolioId,
+          portfolioName: selectedPortfolio?.name || current?.portfolioName || "",
+          nextAvailableAt: "locked",
+          text: current?.text || "",
+        }));
+      }
+      setError(String(e.message || e));
+    } finally {
+      setAiSummaryBusy(false);
+    }
   }
 
   const positions = metrics?.positions || [];
@@ -466,7 +558,16 @@ function App() {
             onSelect={setPortfolioId}
           />
         ) : null}
-        {portfolios.length && tab === "dashboard" ? <DashboardView equity={equity} metrics={metrics} /> : null}
+        {portfolios.length && tab === "dashboard" ? (
+          <DashboardView
+            equity={equity}
+            equityMode={equityMode}
+            equityRange={equityRange}
+            metrics={metrics}
+            onEquityModeChange={setEquityMode}
+            onEquityRangeChange={setEquityRange}
+          />
+        ) : null}
         {portfolios.length && tab === "positions" ? (
           <PositionsView
             onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
@@ -488,6 +589,21 @@ function App() {
           />
         ) : null}
         {portfolios.length && tab === "volatility" ? <VolatilityView volatility={volatilityPositions} /> : null}
+        {portfolios.length && tab === "ai" ? (
+          <AiView
+            aiSettings={aiSettings}
+            aiSummary={aiSummary}
+            currentUser={currentUser}
+            onFetchSummary={fetchAiSummary}
+            onSaveSettings={saveAiSettings}
+            onSettingsChange={updateAiSetting}
+            hasInvestedPosition={(metrics?.invested || 0) > 0}
+            portfolioId={portfolioId}
+            portfolioName={selectedPortfolio?.name || ""}
+            settingsBusy={aiSettingsBusy}
+            summaryBusy={aiSummaryBusy}
+          />
+        ) : null}
       </div>
 
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}

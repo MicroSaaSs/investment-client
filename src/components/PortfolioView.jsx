@@ -70,6 +70,8 @@ export function PortfolioView({
   const sortedPositions = [...activePositions].sort((left, right) => Number(right.current || 0) - Number(left.current || 0));
   const includedCount = activePositions.filter((position) => position.includeInAllocation).length;
   const cashCount = activePositions.filter((position) => position.type === "CASH" || position.type === "CASH_ETF").length;
+  const pnlPctValue = Number(metrics?.pnlPct || 0);
+  const pnlTrendArrow = pnlPctValue < 0 ? "↓" : "↑";
 
   return (
     <main className="portfolio-view">
@@ -143,7 +145,10 @@ export function PortfolioView({
               </article>
               <article className="portfolio-overview-card">
                 <span>Portfolio value</span>
-                <strong>{compactMoney(metrics?.totalValue)}</strong>
+                <div className="portfolio-overview-value-row">
+                  <strong>{compactMoney(metrics?.totalValue)}</strong>
+                  <i className={`portfolio-overview-trend ${pnlPctValue < 0 ? "down" : "up"}`}>{`· ${pnlTrendArrow} ${pct(Math.abs(pnlPctValue), 1).replace("+", "")}`}</i>
+                </div>
                 <small>Current marked-to-market value</small>
               </article>
               <article className="portfolio-overview-card">

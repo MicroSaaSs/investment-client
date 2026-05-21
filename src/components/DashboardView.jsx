@@ -4,6 +4,19 @@ import {compactMoney, money, pct} from "../utils/format";
 import {MetricDetailsModal} from "./MetricDetailsModal";
 
 const ALLOCATION_COLORS = ["#4f83bf", "#c3504c", "#9dbc59", "#8366aa", "#4ea7c1", "#fe9640", "#7ea1cc", "#d48383"];
+const EQUITY_RANGES = [
+  {value: "week", label: "Week"},
+  {value: "2w", label: "2 weeks"},
+  {value: "month", label: "Month"},
+  {value: "3m", label: "3 months"},
+  {value: "6m", label: "6 months"},
+  {value: "year", label: "Year"},
+  {value: "all", label: "All time"},
+];
+const EQUITY_MODES = [
+  {value: "daily", label: "Daily"},
+  {value: "monthly", label: "Monthly"},
+];
 
 function MetricCard({label, value, detail, tone = "default", onClick}) {
   return (
@@ -27,7 +40,7 @@ function EquityTooltip({active, label, payload}) {
   );
 }
 
-export function DashboardView({metrics, equity}) {
+export function DashboardView({metrics, equity, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
   const [detailModal, setDetailModal] = React.useState(null);
   if (!metrics) return null;
   const detailPositions = (metrics.positions || []).filter((position) => position.mode !== "WATCHLIST");
@@ -55,6 +68,14 @@ export function DashboardView({metrics, equity}) {
           <div>
             <h2>Capital Curve</h2>
             <p className="panel-copy">Invested baseline + current capitalization history</p>
+          </div>
+          <div className="chart-controls">
+            <select onChange={(event) => onEquityRangeChange(event.target.value)} value={equityRange}>
+              {EQUITY_RANGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+            <select onChange={(event) => onEquityModeChange(event.target.value)} value={equityMode}>
+              {EQUITY_MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={320}>
