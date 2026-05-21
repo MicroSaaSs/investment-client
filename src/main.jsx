@@ -84,6 +84,8 @@ function App() {
   const [telegramLinkCode, setTelegramLinkCode] = useState("");
   const [portfolios, setPortfolios] = useState([]);
   const [portfolioId, setPortfolioId] = useState("");
+  const [portfoliosBusy, setPortfoliosBusy] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
   const [rawPositions, setRawPositions] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -217,29 +219,34 @@ function App() {
   }, [isAuthenticated]);
 
   async function loadPortfolios() {
-    const list = await api.getPortfolios();
-    setPortfolios(list);
-    setPortfolioId((current) => {
-      if (list.some((portfolio) => portfolio.id === current)) return current;
-      return list[0]?.id || "";
-    });
-    return list;
+    setPortfoliosBusy(true);
+    try {
+      const list = await api.getPortfolios();
+      setPortfolios(list);
+      setPortfolioId((current) => {
+        if (list.some((portfolio) => portfolio.id === current)) return current;
+        return list[0]?.id || "";
+      });
+      return list;
+    } finally {
+      setPortfoliosBusy(false);
+    }
   }
 
   async function refreshPortfolioViews(id = portfolioId) {
     if (!id) return;
-    const [nextMetrics, nextPositions, nextTransactions, nextEquity] = await Promise.all([
-      api.getMetrics(id),
-      api.getPositions(id),
-      api.getTransactions(id),
-      api.getEquityCurve(id, equityRange, equityMode),
-    ]);
-    startTransition(() => {
-      setMetrics(nextMetrics);
-      setEquity(nextEquity.points || []);
-      setRawPositions(nextPositions);
-      setTransactions(nextTransactions);
-    });
+    setWorkspaceBusy(true);
+    try {
+      const workspace = await api.getWorkspace(id, equityRange, equityMode);
+      startTransition(() => {
+        setMetrics(workspace.metrics || null);
+        setEquity(workspace.equityHistory?.points || []);
+        setRawPositions(workspace.positions || []);
+        setTransactions(workspace.transactions || []);
+      });
+    } finally {
+      setWorkspaceBusy(false);
+    }
   }
 
   function updateAiSetting(key, value) {
@@ -494,6 +501,7 @@ function App() {
   const watchlistPositions = positions.filter((position) => position.mode === "WATCHLIST");
   const activeRawPositions = rawPositions.filter((position) => (position.mode || "ACTIVE") !== "WATCHLIST");
   const volatilityPositions = activePositions.filter((position) => position.type !== "CASH" && position.type !== "CASH_ETF");
+  const dataBusy = portfoliosBusy || workspaceBusy;
 
   if (!isAuthenticated) {
     return (
@@ -545,6 +553,16 @@ function App() {
         />
 
         {error ? <div className="error">{error}</div> : null}
+
+        {dataBusy ? (
+          <div className="app-loading-overlay" role="status" aria-live="polite">
+            <div className="app-loading-spinner" />
+            <div className="app-loading-copy">
+              <strong>Loading portfolio data</strong>
+              <span>Fetching portfolios, prices, transactions, and analytics.</span>
+            </div>
+          </div>
+        ) : null}
 
         <TabNav
           onChange={setTab}

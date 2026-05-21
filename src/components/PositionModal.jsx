@@ -242,7 +242,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
               <span>Company</span>
               <input placeholder="Company Name" value={form.company} onChange={(e) => update("company", e.target.value)} />
             </label>
-            <label>
+            <label className="modal-type-field">
               <span>Type</span>
               <select value={form.type} onChange={(e) => handleTypeChange(e.target.value)}>
                 <option value="STOCK">Stock</option>

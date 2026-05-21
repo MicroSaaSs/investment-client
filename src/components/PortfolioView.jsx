@@ -32,6 +32,24 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
             <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
           </div>
         </div>
+        <div className="position-detail-summary-strip">
+          <div className="position-detail-grid-card">
+            <span>Value</span>
+            <strong>{compactMoney(position.current)}</strong>
+          </div>
+          <div className="position-detail-grid-card">
+            <span>Allocation</span>
+            <strong>{Number(position.weight || 0).toFixed(1)}%</strong>
+          </div>
+          <div className="position-detail-grid-card">
+            <span>Shares</span>
+            <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
+          </div>
+          <div className="position-detail-grid-card">
+            <span>Avg Price</span>
+            <strong>{money(Number(position.shares || 0) > 0 ? Number(position.invested || 0) / Number(position.shares || 0) : 0, 2)}</strong>
+          </div>
+        </div>
         <div className="position-detail-grid">
           <div>
             <span>Price</span>
@@ -147,7 +165,7 @@ export function PortfolioView({
                 <span>Portfolio value</span>
                 <div className="portfolio-overview-value-row">
                   <strong>{compactMoney(metrics?.totalValue)}</strong>
-                  <i className={`portfolio-overview-trend ${pnlPctValue < 0 ? "down" : "up"}`}>{`· ${pnlTrendArrow} ${pct(Math.abs(pnlPctValue), 1).replace("+", "")}`}</i>
+                  <i className={`portfolio-overview-trend ${pnlPctValue < 0 ? "down" : "up"}`}>{`· ${pnlTrendArrow} ${compactMoney(Math.abs(metrics?.pnl || 0))} · ${pct(Math.abs(pnlPctValue), 1).replace("+", "")}`}</i>
                 </div>
                 <small>Current marked-to-market value</small>
               </article>

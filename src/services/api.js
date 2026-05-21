@@ -73,6 +73,7 @@ export const api = {
   createPortfolio: (payload) => request("/api/portfolios", {method: "POST", body: JSON.stringify(payload)}),
   updatePortfolio: (id, payload) => request(`/api/portfolios/${id}`, {method: "PUT", body: JSON.stringify(payload)}),
   deletePortfolio: (id) => request(`/api/portfolios/${id}`, {method: "DELETE"}),
+  getWorkspace: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/workspace?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
   getMetrics: (id) => request(`/api/portfolios/${id}/metrics`),
   getEquityCurve: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/equity-history?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
   getPositions: (id) => request(`/api/portfolios/${id}/positions`),

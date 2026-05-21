@@ -50,6 +50,7 @@ button {
 .app {
   max-width: 1320px;
   margin: 0 auto;
+  position: relative;
 }
 
 .eyebrow {
@@ -1479,6 +1480,31 @@ tbody td > small {
   color: #687a98;
   font-size: 15px;
 }
+.position-detail-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.position-detail-grid-card {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f7faff;
+  border: 1px solid #e2eaf6;
+}
+.position-detail-grid-card span {
+  display: block;
+  color: #72839f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.position-detail-grid-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
 .position-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1697,33 +1723,34 @@ tbody td > small {
 .auth-form,
 .modal-form {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 .auth-grid,
 .modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 .modal-grid-identity {
-  grid-template-columns: 1.1fr 1.4fr 0.9fr;
+  grid-template-columns: 1fr 1.25fr 0.82fr;
+  align-items: start;
 }
 .editor-mode-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: fit-content;
-  padding: 6px;
-  border-radius: 18px;
+  padding: 5px;
+  border-radius: 16px;
   background: #eef3fb;
   border: 1px solid #dde7f4;
 }
 .editor-mode-button {
-  min-width: 92px;
-  min-height: 40px;
-  padding: 10px 16px;
+  min-width: 82px;
+  min-height: 34px;
+  padding: 7px 13px;
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
   color: #667897;
   font-weight: 800;
@@ -1748,9 +1775,9 @@ tbody td > small {
 .modal-form input,
 .modal-form select {
   width: 100%;
-  min-height: 58px;
-  padding: 16px 18px;
-  border-radius: 20px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 16px;
   border: 1px solid #cad7ea;
   background: #fbfdff;
   color: var(--ink);
@@ -1819,7 +1846,7 @@ tbody td > small {
 .ghost,
 .danger,
 .modal-close {
-  padding: 14px 20px;
+  padding: 10px 16px;
   font-weight: 800;
 }
 .primary {
@@ -1870,7 +1897,7 @@ tbody td > small {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 18px 22px 14px;
+  padding: 14px 18px 10px;
   border-bottom: 1px solid #e1e9f5;
 }
 .modal-header-actions {
@@ -1882,46 +1909,46 @@ tbody td > small {
 }
 .modal-header h3 {
   margin: 6px 0 0;
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1.15;
   letter-spacing: -0.04em;
 }
 .modal-kicker {
   margin: 0;
   color: #62738f;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 .modal-body {
-  padding: 18px 22px 22px;
+  padding: 12px 16px 16px;
   overflow: auto;
   flex: 1 1 auto;
   min-height: 0;
 }
 .modal-form label {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 .modal-grid-full {
   grid-column: 1 / -1;
 }
 .modal-section {
   display: grid;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.86));
   border: 1px solid rgba(18, 48, 95, 0.08);
 }
 .modal-section-heading {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 .modal-section-heading h4 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   letter-spacing: -0.04em;
 }
 .risk-grid-note {
@@ -1933,7 +1960,7 @@ tbody td > small {
 .risk-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 .risk-grid-row1 {
   grid-column: span 2;
@@ -1943,10 +1970,21 @@ tbody td > small {
 }
 .modal-form label span {
   color: #5c6e8b;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.modal-form label small {
+  color: #637392;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.modal-type-field {
+  align-content: start;
+}
+.modal-type-field small {
+  max-width: 16ch;
 }
 .input-unit-wrap {
   position: relative;
@@ -1954,10 +1992,10 @@ tbody td > small {
 .input-unit-wrap i {
   position: absolute;
   top: 50%;
-  right: 16px;
+  right: 14px;
   transform: translateY(-50%);
   color: #7182a0;
-  font-size: 12px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -1966,9 +2004,9 @@ tbody td > small {
 }
 .risk-grid input,
 .risk-grid select {
-  min-height: 52px;
-  padding: 14px 50px 14px 16px;
-  border-radius: 18px;
+  min-height: 46px;
+  padding: 11px 42px 11px 14px;
+  border-radius: 16px;
 }
 .checkbox-row {
   display: flex !important;
@@ -2109,8 +2147,17 @@ tbody td > small {
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 2px;
+}
+.modal-actions .ghost,
+.modal-actions .primary,
+.modal-actions .danger {
+  min-height: 44px;
+  padding: 10px 18px;
+}
+.modal-actions .primary {
+  min-width: 190px;
 }
 .modal-actions-wide {
   grid-column: 1 / -1;
@@ -2193,6 +2240,54 @@ tbody td > small {
   background: #ffe5e6;
   color: #9f1f2f;
   border: 1px solid #f6c6cc;
+}
+
+.app-loading-overlay {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(189, 205, 229, 0.9);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
+}
+
+.app-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(18, 48, 95, 0.18);
+  border-top-color: var(--accent);
+  animation: app-loading-spin 0.8s linear infinite;
+  flex: 0 0 auto;
+}
+
+.app-loading-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.app-loading-copy strong {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.app-loading-copy span {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@keyframes app-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 980px) {
