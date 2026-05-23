@@ -445,7 +445,6 @@ button {
 .ai-summary-card {
   display: grid;
   gap: 14px;
-  min-height: 260px;
   margin-top: 18px;
   padding: 20px 22px;
   border: 1px solid rgba(18, 48, 95, 0.08);
@@ -456,7 +455,7 @@ button {
 
 .ai-summary-head {
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   justify-content: space-between;
   gap: 12px;
 }
@@ -610,12 +609,16 @@ button {
   white-space: nowrap;
 }
 .portfolio-bar-summary-empty {
+  display: flex;
+  align-items: flex-start;
   padding: 14px 16px;
+  min-height: 124px;
   border-radius: 18px;
   background: #f7faff;
   border: 1px solid #e2eaf6;
   color: #687998;
   font-size: 14px;
+  line-height: 1.45;
 }
 .portfolio-preview-mobile-list {
   display: none;
@@ -1337,6 +1340,32 @@ button {
 .transactions-desktop-table {
   max-height: 70vh;
   overflow: auto;
+}
+.watchlist-desktop-table table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.watchlist-desktop-table th:nth-child(1),
+.watchlist-desktop-table td:nth-child(1) {
+  width: 10%;
+}
+.watchlist-desktop-table th:nth-child(2),
+.watchlist-desktop-table td:nth-child(2) {
+  width: 18%;
+}
+.watchlist-desktop-table th:nth-child(3),
+.watchlist-desktop-table td:nth-child(3),
+.watchlist-desktop-table th:nth-child(4),
+.watchlist-desktop-table td:nth-child(4),
+.watchlist-desktop-table th:nth-child(5),
+.watchlist-desktop-table td:nth-child(5),
+.watchlist-desktop-table th:nth-child(6),
+.watchlist-desktop-table td:nth-child(6) {
+  width: 15%;
+}
+.watchlist-desktop-table th:nth-child(7),
+.watchlist-desktop-table td:nth-child(7) {
+  width: 12%;
 }
 .positions-desktop-table thead th,
 .transactions-desktop-table thead th {
@@ -3642,7 +3671,6 @@ tbody td > small {
     grid-template-columns: 1fr;
   }
   .ai-summary-card {
-    min-height: 220px;
     padding: 18px;
   }
   .ai-summary-head {

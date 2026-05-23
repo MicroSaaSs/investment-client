@@ -73,7 +73,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           <small>{deepestDrawdown ? `Peak ${money(deepestDrawdown.peak, 2)}` : "No data yet"}</small>
         </article>
       </div>
-      <div className="table-wrap desktop-table">
+      <div className="table-wrap desktop-table watchlist-desktop-table">
         <table>
           <thead>
             <tr>
