@@ -18,6 +18,23 @@ const EQUITY_MODES = [
   {value: "monthly", label: "Monthly"},
 ];
 
+function renderPiePercentLabel({percent, x, y}) {
+  if (!percent || percent <= 0) return null;
+  return (
+    <text
+      fill="#ffffff"
+      fontSize={18}
+      fontWeight={500}
+      textAnchor="middle"
+      x={x}
+      y={y}
+      dominantBaseline="central"
+    >
+      {`${Math.round(percent * 100)}%`}
+    </text>
+  );
+}
+
 function AllocationLegend({items}) {
   if (!items.length) {
     return <div className="allocation-legend-empty">No active allocation data.</div>;
@@ -134,10 +151,11 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
                     data={boughtAllocation}
                     dataKey="value"
                     nameKey="name"
-                    outerRadius={90}
-                    innerRadius={54}
-                    paddingAngle={2}
-                    label={false}
+                    outerRadius={120}
+                    innerRadius={0}
+                    paddingAngle={0}
+                    label={renderPiePercentLabel}
+                    labelLine={false}
                     isAnimationActive={false}
                   >
                     {boughtAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
@@ -164,10 +182,11 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
                     data={currentAllocation}
                     dataKey="value"
                     nameKey="name"
-                    outerRadius={90}
-                    innerRadius={54}
-                    paddingAngle={2}
-                    label={false}
+                    outerRadius={120}
+                    innerRadius={0}
+                    paddingAngle={0}
+                    label={renderPiePercentLabel}
+                    labelLine={false}
                     isAnimationActive={false}
                   >
                     {currentAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
