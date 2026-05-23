@@ -1,5 +1,7 @@
 import React from "react";
 import { money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
+import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
+import { ModalSheet } from "./ModalSheet";
 
 function companyLabel(position) {
   return (position.company || "").trim() || "—";
@@ -7,6 +9,12 @@ function companyLabel(position) {
 
 function pnlAmount(position) {
   return Number(position.current || 0) - Number(position.invested || 0);
+}
+
+function averagePrice(position) {
+  const shares = Number(position.shares || 0);
+  if (!shares) return 0;
+  return Number(position.invested || 0) / shares;
 }
 
 function ValueBlock({ position }) {
@@ -57,7 +65,23 @@ function SourceBadge({ source }) {
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
 
+const HOLDINGS_METRIC_COLUMNS = [
+  { id: "price", label: "Price" },
+  { id: "peakPrice", label: "Peak Price" },
+  { id: "avgPrice", label: "Avg Price" },
+  { id: "value", label: "Value" },
+  { id: "pnlPercent", label: "PnL %" },
+  { id: "pnlValue", label: "PnL $" },
+  { id: "allocation", label: "Allocation" },
+  { id: "drawdown", label: "Drawdown" },
+  { id: "volatility", label: "Volatility" },
+  { id: "triggers", label: "Triggers" },
+  { id: "signal", label: "Signal" },
+];
+
 export function PositionsView({
+  mobilePositionSummaryMetrics,
+  onMobilePositionSummaryMetricsChange,
   positions,
   transactions,
   onDeletePosition,
@@ -67,6 +91,22 @@ export function PositionsView({
 }) {
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState("positions");
+  const [showColumnsPicker, setShowColumnsPicker] = React.useState(false);
+  const [visibleColumns, setVisibleColumns] = React.useState(() => new Set(HOLDINGS_METRIC_COLUMNS.map((column) => column.id)));
+  const summaryMetricIds = normalizePositionSummaryMetricIds(mobilePositionSummaryMetrics);
+  const isColumnVisible = React.useCallback((columnId) => visibleColumns.has(columnId), [visibleColumns]);
+
+  const toggleColumn = React.useCallback((columnId) => {
+    setVisibleColumns((current) => {
+      const next = new Set(current);
+      if (next.has(columnId)) {
+        next.delete(columnId);
+      } else {
+        next.add(columnId);
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="positions-layout">
@@ -74,16 +114,34 @@ export function PositionsView({
         <div className="panel-heading">
           <div>
             <div className="panel-subtabs" role="tablist" aria-label="Positions content tabs">
-              <button
-                aria-selected={activeTab === "positions"}
-                className={`panel-subtab ${activeTab === "positions" ? "active" : ""}`}
-                onClick={() => setActiveTab("positions")}
-                role="tab"
-                type="button"
-              >
-                <span className="eyebrow">POSITIONS</span>
-                <strong>Holdings and model drift</strong>
-              </button>
+              <div className={`panel-subtab-shell ${activeTab === "positions" ? "active" : ""}`}>
+                <button
+                  aria-selected={activeTab === "positions"}
+                  className={`panel-subtab panel-subtab-with-control ${activeTab === "positions" ? "active" : ""}`}
+                  onClick={() => setActiveTab("positions")}
+                  role="tab"
+                  type="button"
+                >
+                  <span className="eyebrow">HOLDINGS</span>
+                  <strong>Holdings and model drift</strong>
+                </button>
+                <PositionSummaryMetricControl
+                  className="panel-subtab-control panel-subtab-control-mobile-only"
+                  onChange={onMobilePositionSummaryMetricsChange}
+                  selectedMetricIds={summaryMetricIds}
+                />
+                <div className="panel-subtab-control panel-subtab-control-desktop-only">
+                  <button
+                    aria-expanded={showColumnsPicker}
+                    className={`position-metric-control-button ${showColumnsPicker ? "active" : ""}`}
+                    onClick={() => setShowColumnsPicker((current) => !current)}
+                    title="Choose visible columns"
+                    type="button"
+                  >
+                    <span aria-hidden="true">⚙</span>
+                  </button>
+                </div>
+              </div>
               <button
                 aria-selected={activeTab === "transactions"}
                 className={`panel-subtab ${activeTab === "transactions" ? "active" : ""}`}
@@ -104,22 +162,44 @@ export function PositionsView({
         </div>
         {activeTab === "positions" ? (
         <>
+        {showColumnsPicker ? (
+          <ModalSheet
+            title="COLUMN VISIBILITY"
+            subtitle="Choose holdings table columns"
+            onClose={() => setShowColumnsPicker(false)}
+            className="holdings-columns-sheet"
+          >
+            <div className="holdings-columns-picker" role="dialog" aria-label="Holdings column picker">
+              {HOLDINGS_METRIC_COLUMNS.map((column) => (
+                <label className="holdings-columns-option" key={column.id}>
+                  <input
+                    checked={isColumnVisible(column.id)}
+                    onChange={() => toggleColumn(column.id)}
+                    type="checkbox"
+                  />
+                  <span>{column.label}</span>
+                </label>
+              ))}
+            </div>
+          </ModalSheet>
+        ) : null}
         <div className="table-wrap desktop-table positions-desktop-table">
           <table>
             <thead>
               <tr>
                 <th>Ticker</th>
                 <th>Company</th>
-                <th className="table-center">Price</th>
-                <th className="table-center">Peak Price</th>
-                <th className="table-center">Value</th>
-                <th className="table-center">PnL %</th>
-                <th className="table-center">PnL $</th>
-                <th className="table-center">Allocation</th>
-                <th className="table-center">Drawdown</th>
-                <th className="table-center">Volatility</th>
-                <th className="table-center">Triggers</th>
-                <th className="table-center">Signal</th>
+                {isColumnVisible("price") ? <th className="table-center">Price</th> : null}
+                {isColumnVisible("peakPrice") ? <th className="table-center">Peak Price</th> : null}
+                {isColumnVisible("avgPrice") ? <th className="table-center">Avg Price</th> : null}
+                {isColumnVisible("value") ? <th className="table-center">Value</th> : null}
+                {isColumnVisible("pnlPercent") ? <th className="table-center">PnL %</th> : null}
+                {isColumnVisible("pnlValue") ? <th className="table-center">PnL $</th> : null}
+                {isColumnVisible("allocation") ? <th className="table-center">Allocation</th> : null}
+                {isColumnVisible("drawdown") ? <th className="table-center">Drawdown</th> : null}
+                {isColumnVisible("volatility") ? <th className="table-center">Volatility</th> : null}
+                {isColumnVisible("triggers") ? <th className="table-center">Triggers</th> : null}
+                {isColumnVisible("signal") ? <th className="table-center">Signal</th> : null}
                 <th className="table-center">Actions</th>
               </tr>
             </thead>
@@ -137,35 +217,60 @@ export function PositionsView({
                       <span>{companyLabel(position)}</span>
                     </div>
                   </td>
-                  <td className="table-center">
-                    <div className="table-cell-stack table-cell-stack-center">
-                      <span>{money(position.price, 2)}</span>
-                      <small><SourceBadge source={position.priceSource} /></small>
-                    </div>
-                  </td>
-                  <td className="table-center">{money(position.peak, 2)}</td>
-                  <td className="table-center">
-                    <div className="table-cell-stack table-cell-stack-center">
-                      <ValueBlock position={position} />
-                    </div>
-                  </td>
-                  <td className="table-center">{pct(position.pnlPct)}</td>
-                  <td className="table-center">{money(pnlAmount(position), 0)}</td>
-                  <td className="table-center">
-                    <div className="table-cell-stack table-cell-stack-center">
-                      <AllocationBlock position={position} />
-                    </div>
-                  </td>
-                  <td className="table-center">{pct(position.dd)}</td>
-                  <td className="table-center">{pctMagnitude(position.volatility)}</td>
-                  <td className="table-center">
-                    <TriggerBlock position={position} />
-                  </td>
-                  <td className="table-center"><SignalPill signal={position.signal} /></td>
+                  {isColumnVisible("price") ? (
+                    <td className="table-center">
+                      <div className="table-cell-stack table-cell-stack-center">
+                        <span>{money(position.price, 2)}</span>
+                        <small><SourceBadge source={position.priceSource} /></small>
+                      </div>
+                    </td>
+                  ) : null}
+                  {isColumnVisible("peakPrice") ? <td className="table-center">{money(position.peak, 2)}</td> : null}
+                  {isColumnVisible("avgPrice") ? <td className="table-center">{money(averagePrice(position), 2)}</td> : null}
+                  {isColumnVisible("value") ? (
+                    <td className="table-center">
+                      <div className="table-cell-stack table-cell-stack-center">
+                        <ValueBlock position={position} />
+                      </div>
+                    </td>
+                  ) : null}
+                  {isColumnVisible("pnlPercent") ? <td className="table-center">{pct(position.pnlPct)}</td> : null}
+                  {isColumnVisible("pnlValue") ? <td className="table-center">{money(pnlAmount(position), 0)}</td> : null}
+                  {isColumnVisible("allocation") ? (
+                    <td className="table-center">
+                      <div className="table-cell-stack table-cell-stack-center">
+                        <AllocationBlock position={position} />
+                      </div>
+                    </td>
+                  ) : null}
+                  {isColumnVisible("drawdown") ? <td className="table-center">{pct(position.dd)}</td> : null}
+                  {isColumnVisible("volatility") ? <td className="table-center">{pctMagnitude(position.volatility)}</td> : null}
+                  {isColumnVisible("triggers") ? (
+                    <td className="table-center">
+                      <TriggerBlock position={position} />
+                    </td>
+                  ) : null}
+                  {isColumnVisible("signal") ? <td className="table-center"><SignalPill signal={position.signal} /></td> : null}
                   <td className="table-center">
                     <div className="row-actions row-actions-center">
-                      <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>
-                      <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
+                      <button
+                        aria-label={`Edit ${position.ticker} holding`}
+                        className="toolbar-icon-button"
+                        onClick={() => onEditPosition(position)}
+                        title="Edit holding"
+                        type="button"
+                      >
+                        <span aria-hidden="true">✎</span>
+                      </button>
+                      <button
+                        aria-label={`Delete ${position.ticker} holding`}
+                        className="toolbar-icon-button toolbar-icon-button-danger"
+                        onClick={() => onDeletePosition(position)}
+                        title="Delete holding"
+                        type="button"
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -175,71 +280,16 @@ export function PositionsView({
         </div>
         <div className="mobile-list">
           {positions.map((position) => (
-            <article className="mobile-card mobile-card-position" key={position.id}>
-              <button
-                className="mobile-card-toggle"
-                onClick={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
-                type="button"
-              >
-                <div className="mobile-card-top">
-                  <div>
-                    <strong>{position.ticker}</strong>
-                    <small>{companyLabel(position)}</small>
-                  </div>
-                  <div className="mobile-card-top-meta">
-                    <SignalPill signal={position.signal} />
-                    <span className="mobile-expand-label">{expandedMobileCard === position.id ? "Hide" : "Open"}</span>
-                  </div>
-                </div>
-                <div className="mobile-card-summary">
-                  <span>{money(position.price, 0)} price</span>
-                  <span>{money(pnlAmount(position), 0)} pnl $</span>
-                  <span>{pct(position.dd)} dd %</span>
-                </div>
-              </button>
-              {expandedMobileCard === position.id ? (
-                <>
-                  <div className="mobile-stat-grid">
-                    <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
-                    <div>
-                      <span>Value</span>
-                      <div className="mobile-dual-value">
-                        <strong>Invest {money(position.invested, 0)}</strong>
-                        <small>Curr {money(position.current, 0)}</small>
-                      </div>
-                    </div>
-                    <div><span>PnL %</span><strong>{pct(position.pnlPct)}</strong></div>
-                    <div>
-                      <span>Allocation</span>
-                      <div className="mobile-dual-value">
-                        <strong>Target {pctPlain(position.target)}</strong>
-                        <small>Curr {pctPlain(position.weight)}</small>
-                      </div>
-                    </div>
-                    <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
-                    <div className="mobile-trigger-cell">
-                      <span>Triggers</span>
-                      <div className="mobile-trigger-block">
-                        <div className="trigger-value-row">
-                          <strong>CORR</strong>
-                          <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
-                          <small>{money(position.correctionTrigger, 0)}</small>
-                        </div>
-                        <div className="trigger-value-row">
-                          <strong>DD_P</strong>
-                          <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
-                          <small>{money(position.drawdownTrigger, 0)}</small>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="row-actions row-actions-mobile">
-                    <button className="mini-button" onClick={() => onEditPosition(position)} type="button">Edit</button>
-                    <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
-                  </div>
-                </>
-              ) : null}
-            </article>
+            <MobilePositionCard
+              compactStyle="inline"
+              expanded={expandedMobileCard === position.id}
+              key={position.id}
+              onDelete={onDeletePosition}
+              onEdit={onEditPosition}
+              onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
+              position={position}
+              summaryMetricIds={summaryMetricIds}
+            />
           ))}
         </div>
         </>

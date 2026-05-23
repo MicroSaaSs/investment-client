@@ -18,6 +18,7 @@ import {PositionModal} from "./components/PositionModal";
 import {TransactionModal} from "./components/TransactionModal";
 import {AccountModal} from "./components/AccountModal";
 import {ModalSheet} from "./components/ModalSheet";
+import {DEFAULT_POSITION_SUMMARY_METRICS, normalizePositionSummaryMetricIds} from "./components/MobilePositionCard";
 import "./styles.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -77,6 +78,8 @@ function useScrollNavVisibility() {
 }
 
 function App() {
+  const [portfolioPositionSummaryMetrics, setPortfolioPositionSummaryMetrics] = useState(DEFAULT_POSITION_SUMMARY_METRICS);
+  const [holdingsPositionSummaryMetrics, setHoldingsPositionSummaryMetrics] = useState(DEFAULT_POSITION_SUMMARY_METRICS);
   const [authMode, setAuthMode] = useState("login");
   const [authBusy, setAuthBusy] = useState(true);
   const [authForm, setAuthForm] = useState({email: "", password: "", firstName: "", lastName: ""});
@@ -114,7 +117,7 @@ function App() {
   const isTelegramMiniApp = Boolean(telegramInitData);
   const {showTopBar, showBottomNav} = useScrollNavVisibility();
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
-  const showLogout = currentUser?.authProvider !== "TELEGRAM";
+  const showLogout = !isTelegramMiniApp && Boolean(currentUser);
 
   useEffect(() => {
     async function boot() {
@@ -214,6 +217,8 @@ function App() {
           time: settings.time || "17:45",
           portfolioId: settings.portfolioId || "",
         });
+        setPortfolioPositionSummaryMetrics(normalizePositionSummaryMetricIds(settings.portfolioPositionSummaryMetricIds));
+        setHoldingsPositionSummaryMetrics(normalizePositionSummaryMetricIds(settings.holdingsPositionSummaryMetricIds));
       })
       .catch((e) => setError(String(e.message || e)));
   }, [isAuthenticated]);
@@ -457,6 +462,8 @@ function App() {
         monthDay: aiSettings.monthDay,
         time: aiSettings.time,
         portfolioId,
+        portfolioPositionSummaryMetricIds: portfolioPositionSummaryMetrics,
+        holdingsPositionSummaryMetricIds: holdingsPositionSummaryMetrics,
       });
       setAiSettings({
         notificationsEnabled: saved.notificationsEnabled,
@@ -466,10 +473,43 @@ function App() {
         time: saved.time || "17:45",
         portfolioId: saved.portfolioId || "",
       });
+      setPortfolioPositionSummaryMetrics(normalizePositionSummaryMetricIds(saved.portfolioPositionSummaryMetricIds));
+      setHoldingsPositionSummaryMetrics(normalizePositionSummaryMetricIds(saved.holdingsPositionSummaryMetricIds));
     } catch (e) {
       setError(String(e.message || e));
     } finally {
       setAiSettingsBusy(false);
+    }
+  }
+
+  async function updatePositionSummaryMetrics(kind, nextMetricIds) {
+    const normalized = normalizePositionSummaryMetricIds(nextMetricIds);
+    setError("");
+    if (kind === "portfolio") setPortfolioPositionSummaryMetrics(normalized);
+    else setHoldingsPositionSummaryMetrics(normalized);
+    try {
+      const saved = await api.updateAiSettings({
+        notificationsEnabled: aiSettings.notificationsEnabled,
+        schedule: aiSettings.schedule,
+        weekday: aiSettings.weekday,
+        monthDay: aiSettings.monthDay,
+        time: aiSettings.time,
+        portfolioId: aiSettings.portfolioId,
+        portfolioPositionSummaryMetricIds: kind === "portfolio" ? normalized : portfolioPositionSummaryMetrics,
+        holdingsPositionSummaryMetricIds: kind === "holdings" ? normalized : holdingsPositionSummaryMetrics,
+      });
+      setAiSettings({
+        notificationsEnabled: saved.notificationsEnabled,
+        schedule: saved.schedule || "DAILY",
+        weekday: saved.weekday || "MONDAY",
+        monthDay: saved.monthDay || 1,
+        time: saved.time || "17:45",
+        portfolioId: saved.portfolioId || "",
+      });
+      setPortfolioPositionSummaryMetrics(normalizePositionSummaryMetricIds(saved.portfolioPositionSummaryMetricIds));
+      setHoldingsPositionSummaryMetrics(normalizePositionSummaryMetricIds(saved.holdingsPositionSummaryMetricIds));
+    } catch (e) {
+      setError(String(e.message || e));
     }
   }
 
@@ -574,6 +614,8 @@ function App() {
         {portfolios.length && tab === "portfolios" ? (
           <PortfolioView
             metrics={metrics}
+            mobilePositionSummaryMetrics={portfolioPositionSummaryMetrics}
+            onMobilePositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
             portfolioId={portfolioId}
             portfolios={portfolios}
             onCreate={handleCreatePortfolio}
@@ -599,6 +641,7 @@ function App() {
         ) : null}
         {portfolios.length && tab === "positions" ? (
           <PositionsView
+            mobilePositionSummaryMetrics={holdingsPositionSummaryMetrics}
             onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
             onDeleteTransaction={(transaction) => setModal({type: "delete-transaction", data: transaction})}
             onEditPosition={(position) => {
@@ -606,6 +649,7 @@ function App() {
               setModal({type: "edit-position", data: source});
             }}
             onEditTransaction={(transaction) => setModal({type: "edit-transaction", data: transaction})}
+            onMobilePositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("holdings", nextMetricIds)}
             positions={activePositions}
             transactions={transactions}
           />
