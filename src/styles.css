@@ -1148,12 +1148,21 @@ button {
   fill: #52627d;
   font-size: 11px;
 }
-.allocation-pie-panel .recharts-responsive-container {
-  margin-bottom: 8px;
+.allocation-pie-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.allocation-pie-chart .recharts-responsive-container {
+  margin: 0;
 }
 .allocation-legend {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
 }
 .allocation-legend-item {
   display: flex;
@@ -2619,6 +2628,14 @@ tbody td > small {
   }
   .allocation-pie-grid {
     grid-template-columns: 1fr;
+  }
+  .allocation-pie-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .allocation-legend {
+    max-height: none;
+    overflow: visible;
   }
   .auth-layout {
     grid-template-columns: 1fr;

@@ -126,24 +126,28 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
               <p className="panel-copy">How the invested capital was originally distributed across active holdings.</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={boughtAllocation}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={96}
-                innerRadius={56}
-                paddingAngle={2}
-                label={false}
-                isAnimationActive={false}
-              >
-                {boughtAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
-              </Pie>
-              <Tooltip formatter={(value) => money(value, 0)} />
-            </PieChart>
-          </ResponsiveContainer>
-          <AllocationLegend items={boughtAllocation} />
+          <div className="allocation-pie-layout">
+            <div className="allocation-pie-chart">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={boughtAllocation}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={90}
+                    innerRadius={54}
+                    paddingAngle={2}
+                    label={false}
+                    isAnimationActive={false}
+                  >
+                    {boughtAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
+                  </Pie>
+                  <Tooltip formatter={(value) => money(value, 0)} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <AllocationLegend items={boughtAllocation} />
+          </div>
         </section>
         <section className="panel allocation-pie-panel">
           <div className="panel-heading">
@@ -152,24 +156,28 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
               <p className="panel-copy">How the live portfolio value is distributed right now across active holdings.</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={currentAllocation}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={96}
-                innerRadius={56}
-                paddingAngle={2}
-                label={false}
-                isAnimationActive={false}
-              >
-                {currentAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
-              </Pie>
-              <Tooltip formatter={(value) => money(value, 0)} />
-            </PieChart>
-          </ResponsiveContainer>
-          <AllocationLegend items={currentAllocation} />
+          <div className="allocation-pie-layout">
+            <div className="allocation-pie-chart">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={currentAllocation}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={90}
+                    innerRadius={54}
+                    paddingAngle={2}
+                    label={false}
+                    isAnimationActive={false}
+                  >
+                    {currentAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
+                  </Pie>
+                  <Tooltip formatter={(value) => money(value, 0)} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <AllocationLegend items={currentAllocation} />
+          </div>
         </section>
       </div>
     </main>
