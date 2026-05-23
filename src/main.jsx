@@ -373,18 +373,18 @@ function App() {
     setModal(null);
   }
 
-  async function handleRenamePortfolio(payload) {
-    if (!selectedPortfolio) return;
+  async function handleRenamePortfolio(payload, targetPortfolio = selectedPortfolio) {
+    if (!targetPortfolio) return;
     setError("");
-    await api.updatePortfolio(selectedPortfolio.id, {...selectedPortfolio, name: payload.name});
+    await api.updatePortfolio(targetPortfolio.id, {...targetPortfolio, name: payload.name});
     await loadPortfolios();
     setModal(null);
   }
 
-  async function handleDeletePortfolio() {
-    if (!selectedPortfolio) return;
+  async function handleDeletePortfolio(targetPortfolio = selectedPortfolio) {
+    if (!targetPortfolio) return;
     setError("");
-    await api.deletePortfolio(selectedPortfolio.id);
+    await api.deletePortfolio(targetPortfolio.id);
     setMetrics(null);
     setEquity([]);
     setRawPositions([]);
@@ -619,13 +619,13 @@ function App() {
             portfolioId={portfolioId}
             portfolios={portfolios}
             onCreate={handleCreatePortfolio}
-            onDelete={() => setModal("delete-portfolio")}
+            onDelete={(portfolio) => setModal({type: "delete-portfolio", data: portfolio})}
             onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
             onEditPosition={(position) => {
               const source = rawPositions.find((item) => item.id === position.id) || position;
               setModal({type: "edit-position", data: source});
             }}
-            onRename={() => setModal("rename-portfolio")}
+            onRename={(portfolio) => setModal({type: "rename-portfolio", data: portfolio})}
             onSelect={setPortfolioId}
           />
         ) : null}
@@ -721,8 +721,23 @@ function App() {
           telegramLinkCode={telegramLinkCode}
         />
       ) : null}
-      {modal === "rename-portfolio" && selectedPortfolio ? <PortfolioModal mode="edit" onClose={() => setModal(null)} onSubmit={handleRenamePortfolio} portfolio={selectedPortfolio} /> : null}
-      {modal === "delete-portfolio" && selectedPortfolio ? <ConfirmModal confirmLabel="Delete portfolio" onClose={() => setModal(null)} onConfirm={handleDeletePortfolio} subtitle={`Delete "${selectedPortfolio.name}" together with its positions and transactions?`} title="Delete portfolio" /> : null}
+      {modal?.type === "rename-portfolio" && modal.data ? (
+        <PortfolioModal
+          mode="edit"
+          onClose={() => setModal(null)}
+          onSubmit={(payload) => handleRenamePortfolio(payload, modal.data)}
+          portfolio={modal.data}
+        />
+      ) : null}
+      {modal?.type === "delete-portfolio" && modal.data ? (
+        <ConfirmModal
+          confirmLabel="Delete portfolio"
+          onClose={() => setModal(null)}
+          onConfirm={() => handleDeletePortfolio(modal.data)}
+          subtitle={`Delete "${modal.data.name}" together with its positions and transactions?`}
+          title="Delete portfolio"
+        />
+      ) : null}
       {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
       {modal === "watchlist" ? <PositionModal mode="create" variant="watchlist" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
       {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={activeRawPositions} /> : null}
