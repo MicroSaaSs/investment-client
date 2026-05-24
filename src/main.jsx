@@ -618,6 +618,13 @@ function App() {
             onMobilePositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
             portfolioId={portfolioId}
             portfolios={portfolios}
+            onAddTransaction={(position) => setModal({
+              type: "transaction",
+              data: {
+                ticker: position.ticker,
+                price: Number(position.price || 0),
+              },
+            })}
             onCreate={handleCreatePortfolio}
             onDelete={(portfolio) => setModal({type: "delete-portfolio", data: portfolio})}
             onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
@@ -642,6 +649,13 @@ function App() {
         {portfolios.length && tab === "positions" ? (
           <PositionsView
             mobilePositionSummaryMetrics={holdingsPositionSummaryMetrics}
+            onAddTransaction={(position) => setModal({
+              type: "transaction",
+              data: {
+                ticker: position.ticker,
+                price: Number(position.price || 0),
+              },
+            })}
             onDeletePosition={(position) => setModal({type: "delete-position", data: position})}
             onDeleteTransaction={(transaction) => setModal({type: "delete-transaction", data: transaction})}
             onEditPosition={(position) => {
@@ -740,7 +754,15 @@ function App() {
       ) : null}
       {modal === "position" ? <PositionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
       {modal === "watchlist" ? <PositionModal mode="create" variant="watchlist" onClose={() => setModal(null)} onSubmit={handleCreatePosition} positions={activeRawPositions} /> : null}
-      {modal === "transaction" ? <TransactionModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreateTransaction} positions={activeRawPositions} /> : null}
+      {modal === "transaction" || modal?.type === "transaction" ? (
+        <TransactionModal
+          mode="create"
+          onClose={() => setModal(null)}
+          onSubmit={handleCreateTransaction}
+          positions={activeRawPositions}
+          transaction={modal?.type === "transaction" ? modal.data : null}
+        />
+      ) : null}
       {modal?.type === "edit-position" ? <PositionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
         const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
         await api.updatePosition(portfolioId, positionPayload.id, positionPayload);

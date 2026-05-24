@@ -3,6 +3,7 @@ import { compactMoney, money, pct, pctMagnitude, pctPlain, sourceLabel } from ".
 import { ModalSheet } from "./ModalSheet";
 import { getPositionSummaryMetricConfig, MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { PortfolioBar } from "./PortfolioBar";
+import { TrashIcon } from "./icons/TrashIcon";
 
 function SignalBadge({ signal }) {
   const normalized = signal || "HOLD";
@@ -14,11 +15,41 @@ function SourceBadge({ source }) {
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
 
-function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosition }) {
+function isCashPosition(position) {
+  return position?.type === "CASH";
+}
+
+function companyLabel(position) {
+  if (position?.type === "CASH") return "Uninvested cash";
+  return (position.company || "").trim() || "—";
+}
+
+function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosition, onAddTransaction }) {
   if (!position) return null;
+  const isCash = isCashPosition(position);
+  const avgPrice = Number(position.shares || 0) > 0 ? Number(position.invested || 0) / Number(position.shares || 0) : 0;
+  const pnlValue = Number(position.current || 0) - Number(position.invested || 0);
 
   return (
-    <ModalSheet title="Position details" subtitle={`${position.ticker} overview`} onClose={onClose}>
+    <ModalSheet
+      className="position-details-modal"
+      title="Position details"
+      onClose={onClose}
+      headerActions={onAddTransaction ? (
+        <button
+          aria-label={`Add transaction for ${position.ticker}`}
+          className="toolbar-icon-button txn-toolbar-icon-button"
+          onClick={() => onAddTransaction(position)}
+          title="Add transaction"
+          type="button"
+        >
+          <span aria-hidden="true" className="txn-icon-stack">
+            <i>🧾</i>
+            <b>Txn</b>
+          </span>
+        </button>
+      ) : null}
+    >
       <div className="position-detail-sheet">
         <div className="position-detail-hero">
           <div className="position-detail-hero-main">
@@ -26,46 +57,91 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
               <strong>{position.ticker}</strong>
               <SignalBadge signal={position.signal} />
             </div>
-            <p>{(position.company || "").trim() || "—"}</p>
+            <p>{companyLabel(position)}</p>
           </div>
           <div className="position-detail-title-actions">
-            <button className="mini-button mini-button-secondary" onClick={() => onEditPosition(position)} type="button">Edit</button>
-            <button className="mini-button mini-button-danger" onClick={() => onDeletePosition(position)} type="button">Delete</button>
-          </div>
-        </div>
-        <div className="position-detail-summary-strip">
-          <div className="position-detail-grid-card">
-            <span>Value</span>
-            <strong>{compactMoney(position.current)}</strong>
-          </div>
-          <div className="position-detail-grid-card">
-            <span>Allocation</span>
-            <strong>{Number(position.weight || 0).toFixed(1)}%</strong>
-          </div>
-          <div className="position-detail-grid-card">
-            <span>Shares</span>
-            <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
-          </div>
-          <div className="position-detail-grid-card">
-            <span>Avg Price</span>
-            <strong>{money(Number(position.shares || 0) > 0 ? Number(position.invested || 0) / Number(position.shares || 0) : 0, 2)}</strong>
+            <button
+              aria-label={`Edit ${position.ticker}`}
+              className="toolbar-icon-button"
+              onClick={() => onEditPosition(position)}
+              title="Edit"
+              type="button"
+            >
+              <span aria-hidden="true">✎</span>
+            </button>
+            <button
+              aria-label={`Delete ${position.ticker}`}
+              className="toolbar-icon-button toolbar-icon-button-danger"
+              onClick={() => onDeletePosition(position)}
+              title="Delete"
+              type="button"
+            >
+              <TrashIcon />
+            </button>
           </div>
         </div>
         <div className="position-detail-grid">
-          <div>
-            <span>Price</span>
-            <strong>{money(position.price, 2)}</strong>
-            <small><SourceBadge source={position.priceSource} /></small>
+          <div className="position-detail-grid-card">
+            <span>Value</span>
+            <div className="position-detail-lines">
+              <strong>Invest {money(position.invested, 0)}</strong>
+              <strong>Curr {money(position.current, 0)}</strong>
+            </div>
           </div>
-          <div><span>Peak Price</span><strong>{money(position.peak, 2)}</strong></div>
-          <div><span>PnL</span><strong>{pct(position.pnlPct)}</strong></div>
-          <div><span>PnL $</span><strong>{money(Number(position.current || 0) - Number(position.invested || 0), 0)}</strong></div>
-          <div><span>Weight</span><strong>{pctPlain(position.weight)}</strong></div>
-          <div><span>Target</span><strong>{pctPlain(position.target)}</strong></div>
-          <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
-          <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
-          <div><span>Corr Trigger</span><strong>{pctMagnitude(Math.abs(position.corr))}</strong><small>{money(position.correctionTrigger, 0)}</small></div>
-          <div><span>DD_P Trigger</span><strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong><small>{money(position.drawdownTrigger, 0)}</small></div>
+          {!isCash ? (
+            <>
+              <div className="position-detail-grid-card">
+                <span>Allocation</span>
+                <div className="position-detail-lines">
+                  <strong>Target {pctPlain(position.target)}</strong>
+                  <strong>Curr {pctPlain(position.weight)}</strong>
+                </div>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>Shares</span>
+                <div className="position-detail-lines">
+                  <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
+                  <strong>Avg {money(avgPrice, 2)}</strong>
+                </div>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>Price</span>
+                <div className="position-detail-price-line">
+                  <strong>{money(position.price, 2)}</strong>
+                  <small><SourceBadge source={position.priceSource} /></small>
+                </div>
+                <strong className="position-detail-secondary-value">Peak {money(position.peak, 2)}</strong>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>PnL</span>
+                <div className="position-detail-lines">
+                  <strong>{money(pnlValue, 0)}</strong>
+                  <strong>{pct(position.pnlPct)}</strong>
+                </div>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>Drawdown</span>
+                <strong>{pct(position.dd)}</strong>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>Volatility</span>
+                <strong>{pctMagnitude(position.volatility)}</strong>
+              </div>
+              <div className="position-detail-grid-card">
+                <span>Triggers</span>
+                <div className="position-detail-trigger-lines">
+                  <div className="position-detail-trigger-row">
+                    <strong>CORR {pctMagnitude(Math.abs(position.corr))}</strong>
+                    <strong>{money(position.correctionTrigger, 0)}</strong>
+                  </div>
+                  <div className="position-detail-trigger-row">
+                    <strong>DD_P {pctMagnitude(Math.abs(position.ddPlan))}</strong>
+                    <strong>{money(position.drawdownTrigger, 0)}</strong>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </ModalSheet>
@@ -79,6 +155,7 @@ export function PortfolioView({
   mobilePositionSummaryMetrics,
   onEditPosition,
   onDeletePosition,
+  onAddTransaction,
   onMobilePositionSummaryMetricsChange,
   onSelect,
   onCreate,
@@ -135,10 +212,10 @@ export function PortfolioView({
                             <strong>{position.ticker}</strong>
                             <SignalBadge signal={position.signal} />
                           </div>
-                          <span className="portfolio-bar-position-company">{position.company || "—"}</span>
+                          <span className="portfolio-bar-position-company">{companyLabel(position)}</span>
                         </div>
                         <div className="portfolio-bar-position-values">
-                          {summaryMetricIds.map((metricId) => {
+                          {(isCashPosition(position) ? ["valueCurrent"] : summaryMetricIds).map((metricId) => {
                             const metric = getPositionSummaryMetricConfig(metricId, position);
                             return <strong key={metric.id}>{metric.summary}</strong>;
                           })}
@@ -157,6 +234,7 @@ export function PortfolioView({
                     compactStyle="inline"
                     expanded={expandedMobileCard === position.id}
                     key={position.id}
+                    onAddTransaction={onAddTransaction}
                     onDelete={onDeletePosition}
                     onEdit={onEditPosition}
                     onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
@@ -207,6 +285,10 @@ export function PortfolioView({
         ) : null}
       </div>
       <PositionDetailsModal
+        onAddTransaction={(position) => {
+          setDetailPosition(null);
+          onAddTransaction?.(position);
+        }}
         onClose={() => setDetailPosition(null)}
         onDeletePosition={onDeletePosition}
         onEditPosition={onEditPosition}

@@ -1,5 +1,6 @@
 import React from "react";
 import { money, pct, pctMagnitude, sourceLabel } from "../utils/format";
+import { TrashIcon } from "./icons/TrashIcon";
 
 const DEFAULT_WATCH_SETTINGS = {
   peakWindowMonths: 5,
@@ -118,6 +119,17 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 <strong>{position.ticker}</strong>
                 <small>{companyLabel(position)}</small>
               </div>
+              <div className="mobile-position-card-actions mobile-position-card-actions-inline">
+                <button
+                  aria-label={`Delete ${position.ticker} watch item`}
+                  className="toolbar-icon-button toolbar-icon-button-danger mobile-position-card-action"
+                  onClick={() => onDeleteWatch(position)}
+                  title="Delete watch item"
+                  type="button"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
             <div className="mobile-stat-grid">
               <div>
@@ -128,9 +140,6 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
               <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
               <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
               <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
-            </div>
-            <div className="row-actions row-actions-mobile">
-              <button className="mini-button mini-button-danger" onClick={() => onDeleteWatch(position)} type="button">Delete</button>
             </div>
           </article>
         ))}

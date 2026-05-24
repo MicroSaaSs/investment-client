@@ -876,6 +876,25 @@ button {
   font-weight: 700;
   line-height: 1;
 }
+.txn-toolbar-icon-button {
+  font-size: 14px;
+}
+.txn-icon-stack {
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
+  line-height: 1;
+  transform: translateY(1px);
+}
+.txn-icon-stack i {
+  font-style: normal;
+  font-size: 12px;
+}
+.txn-icon-stack b {
+  margin-top: 1px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
 .portfolio-chip-row {
   display: grid;
   grid-template-columns: 1fr;
@@ -1149,13 +1168,17 @@ button {
   font-size: 11px;
 }
 .allocation-pie-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 380px;
+}
+.allocation-pie-chart {
+  width: 100%;
+  max-width: 660px;
 }
 .allocation-pie-chart .recharts-responsive-container {
-  margin: 0;
+  margin: 0 auto;
 }
 .allocation-legend {
   display: grid;
@@ -1353,6 +1376,38 @@ button {
 .watchlist-desktop-table table {
   min-width: 0;
   table-layout: fixed;
+}
+.transactions-desktop-table table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.transactions-desktop-table th:nth-child(1),
+.transactions-desktop-table td:nth-child(1) {
+  width: 18%;
+}
+.transactions-desktop-table th:nth-child(2),
+.transactions-desktop-table td:nth-child(2) {
+  width: 12%;
+}
+.transactions-desktop-table th:nth-child(3),
+.transactions-desktop-table td:nth-child(3) {
+  width: 10%;
+}
+.transactions-desktop-table th:nth-child(4),
+.transactions-desktop-table td:nth-child(4) {
+  width: 12%;
+}
+.transactions-desktop-table th:nth-child(5),
+.transactions-desktop-table td:nth-child(5) {
+  width: 14%;
+}
+.transactions-desktop-table th:nth-child(6),
+.transactions-desktop-table td:nth-child(6) {
+  width: 10%;
+}
+.transactions-desktop-table th:nth-child(7),
+.transactions-desktop-table td:nth-child(7) {
+  width: 24%;
 }
 .watchlist-desktop-table th:nth-child(1),
 .watchlist-desktop-table td:nth-child(1) {
@@ -1726,6 +1781,19 @@ tbody td > small {
   display: grid;
   gap: 16px;
 }
+.position-details-modal .modal-header {
+  align-items: center;
+}
+.position-details-modal .modal-header > div:first-child {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+.position-details-modal .modal-kicker {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.2em;
+}
 .position-detail-hero {
   display: flex;
   align-items: flex-start;
@@ -1772,6 +1840,9 @@ tbody td > small {
   background: #f7faff;
   border: 1px solid #e2eaf6;
 }
+.position-detail-grid-card-wide {
+  grid-column: 1 / -1;
+}
 .position-detail-grid-card span {
   display: block;
   color: #72839f;
@@ -1786,18 +1857,55 @@ tbody td > small {
   font-size: 15px;
   letter-spacing: -0.02em;
 }
+.position-detail-lines {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+.position-detail-lines strong {
+  margin-top: 0;
+}
+.position-detail-price-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.position-detail-price-line strong {
+  margin-top: 0;
+}
+.position-detail-price-line small {
+  margin-top: 0;
+}
+.position-detail-secondary-value {
+  margin-top: 8px;
+}
+.position-detail-trigger-lines {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+.position-detail-trigger-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.position-detail-trigger-row strong {
+  margin-top: 0;
+}
 .position-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-.position-detail-grid div {
+.position-detail-grid > .position-detail-grid-card {
   padding: 12px 14px;
   border-radius: 16px;
   background: #f7faff;
   border: 1px solid #e2eaf6;
 }
-.position-detail-grid span {
+.position-detail-grid > .position-detail-grid-card > span {
   display: block;
   color: #72839f;
   font-size: 10px;
@@ -1805,13 +1913,13 @@ tbody td > small {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.position-detail-grid strong {
+.position-detail-grid > .position-detail-grid-card > strong {
   display: block;
   margin-top: 6px;
   font-size: 15px;
   letter-spacing: -0.02em;
 }
-.position-detail-grid small {
+.position-detail-grid > .position-detail-grid-card > small {
   display: block;
   margin-top: 6px;
 }

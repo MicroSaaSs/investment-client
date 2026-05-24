@@ -1,6 +1,7 @@
 import React from "react";
 import { compactMoney, money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
 import { ModalSheet } from "./ModalSheet";
+import { TrashIcon } from "./icons/TrashIcon";
 
 export const DEFAULT_POSITION_SUMMARY_METRICS = ["valueCurrent", "allocationCurrent", "shares"];
 
@@ -37,6 +38,7 @@ export function normalizePositionSummaryMetricIds(metricIds) {
 }
 
 function companyLabel(position) {
+  if (position?.type === "CASH") return "Uninvested cash";
   return (position.company || "").trim() || "—";
 }
 
@@ -50,7 +52,19 @@ function averagePrice(position) {
     : 0;
 }
 
+function isCashPosition(position) {
+  return position?.type === "CASH";
+}
+
 export function getPositionSummaryMetricConfig(id, position) {
+  if (isCashPosition(position) && id !== "valueCurrent" && id !== "valueInvested") {
+    return {
+      id,
+      label: "Value",
+      summary: compactMoney(position.current),
+      detailValue: money(position.current, 0),
+    };
+  }
   const pnlValue = pnlAmount(position);
   const configs = {
     valueCurrent: {
@@ -285,7 +299,7 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
           headerActions={(
             <div className="metrics-picker-modal-actions">
               <button aria-label="Discard metric selection" className="toolbar-icon-button modal-icon-action" onClick={closeModal} title="Discard" type="button">
-                <span aria-hidden="true">×</span>
+                <TrashIcon />
               </button>
             </div>
           )}
@@ -306,12 +320,14 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
 export function MobilePositionCard({
   expanded,
   compactStyle = "chips",
+  onAddTransaction,
   onDelete,
   onEdit,
   onToggle,
   position,
   summaryMetricIds,
 }) {
+  const isCash = isCashPosition(position);
   const summaryMetrics = normalizePositionSummaryMetricIds(summaryMetricIds).map((id) => getPositionSummaryMetricConfig(id, position)).slice(0, 3);
   function handleToggleKeyDown(event) {
     if (event.key === "Enter" || event.key === " ") {
@@ -342,13 +358,27 @@ export function MobilePositionCard({
           </div>
           {compactStyle === "inline" && !expanded ? (
             <div className="mobile-position-card-inline-values" aria-hidden="true">
-              {summaryMetrics.map((metric) => (
+              {(isCash ? [getPositionSummaryMetricConfig("valueCurrent", position)] : summaryMetrics).map((metric) => (
                 <strong key={metric.id}>{metric.summary}</strong>
               ))}
             </div>
           ) : null}
-          {expanded && (onEdit || onDelete) ? (
+          {expanded && (onEdit || onDelete || onAddTransaction) ? (
             <div className="mobile-position-card-actions mobile-position-card-actions-inline">
+              <ActionButton
+                icon={(
+                  <span className="txn-icon-stack">
+                    <i>🧾</i>
+                    <b>Txn</b>
+                  </span>
+                )}
+                label={`Add transaction for ${position.ticker}`}
+                onClick={(pos) => {
+                  pos?.stopPropagation?.();
+                  onAddTransaction?.(position);
+                }}
+                title="Add transaction"
+              />
               <ActionButton
                 icon="✎"
                 label={`Edit ${position.ticker}`}
@@ -360,7 +390,7 @@ export function MobilePositionCard({
               />
               <ActionButton
                 danger
-                icon="×"
+                icon={<TrashIcon />}
                 label={`Delete ${position.ticker}`}
                 onClick={(pos) => {
                   pos?.stopPropagation?.();
@@ -373,7 +403,7 @@ export function MobilePositionCard({
         </div>
         {compactStyle === "chips" && !expanded ? (
           <div className="mobile-card-summary">
-            {summaryMetrics.map((metric) => (
+            {(isCash ? [getPositionSummaryMetricConfig("valueCurrent", position)] : summaryMetrics).map((metric) => (
               <span key={metric.id}>
                 <strong>{metric.label}</strong>
                 {metric.summary}
@@ -393,52 +423,56 @@ export function MobilePositionCard({
                 <strong>Curr {money(position.current, 0)}</strong>
               </div>
             </div>
-            <div className="mobile-position-card-stat">
-              <span>Allocation</span>
-              <div className="mobile-position-card-stat-lines">
-                <strong>Target {pctPlain(position.target)}</strong>
-                <strong>Curr {pctPlain(position.weight)}</strong>
-              </div>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>Shares</span>
-              <div className="mobile-position-card-stat-lines">
-                <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
-                <strong>Avg {money(averagePrice(position), 2)}</strong>
-              </div>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>Price</span>
-              <div className="mobile-position-card-stat-lines mobile-position-card-stat-lines-price">
-                <div className="mobile-position-card-price-row">
-                  <strong>{money(position.price, 2)}</strong>
-                  <small><SourceBadge source={position.priceSource} /></small>
+            {!isCash ? (
+              <>
+                <div className="mobile-position-card-stat">
+                  <span>Allocation</span>
+                  <div className="mobile-position-card-stat-lines">
+                    <strong>Target {pctPlain(position.target)}</strong>
+                    <strong>Curr {pctPlain(position.weight)}</strong>
+                  </div>
                 </div>
-                <strong>Peak {money(position.peak, 2)}</strong>
-              </div>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>PnL</span>
-              <div className="mobile-position-card-stat-lines">
-                <strong>{money(pnlAmount(position), 0)}</strong>
-                <strong>{pct(position.pnlPct)}</strong>
-              </div>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>Drawdown</span>
-              <strong>{pct(position.dd)}</strong>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>Volatility</span>
-              <strong>{pctMagnitude(position.volatility)}</strong>
-            </div>
-            <div className="mobile-position-card-stat">
-              <span>Triggers</span>
-              <div className="mobile-position-card-stat-lines">
-                <strong>CORR {pctMagnitude(Math.abs(position.corr))} {money(position.correctionTrigger, 0)}</strong>
-                <strong>DD_P {pctMagnitude(Math.abs(position.ddPlan))} {money(position.drawdownTrigger, 0)}</strong>
-              </div>
-            </div>
+                <div className="mobile-position-card-stat">
+                  <span>Shares</span>
+                  <div className="mobile-position-card-stat-lines">
+                    <strong>{Number(position.shares || 0).toLocaleString()} sh</strong>
+                    <strong>Avg {money(averagePrice(position), 2)}</strong>
+                  </div>
+                </div>
+                <div className="mobile-position-card-stat">
+                  <span>Price</span>
+                  <div className="mobile-position-card-stat-lines mobile-position-card-stat-lines-price">
+                    <div className="mobile-position-card-price-row">
+                      <strong>{money(position.price, 2)}</strong>
+                      <small><SourceBadge source={position.priceSource} /></small>
+                    </div>
+                    <strong>Peak {money(position.peak, 2)}</strong>
+                  </div>
+                </div>
+                <div className="mobile-position-card-stat">
+                  <span>PnL</span>
+                  <div className="mobile-position-card-stat-lines">
+                    <strong>{money(pnlAmount(position), 0)}</strong>
+                    <strong>{pct(position.pnlPct)}</strong>
+                  </div>
+                </div>
+                <div className="mobile-position-card-stat">
+                  <span>Drawdown</span>
+                  <strong>{pct(position.dd)}</strong>
+                </div>
+                <div className="mobile-position-card-stat">
+                  <span>Volatility</span>
+                  <strong>{pctMagnitude(position.volatility)}</strong>
+                </div>
+                <div className="mobile-position-card-stat">
+                  <span>Triggers</span>
+                  <div className="mobile-position-card-stat-lines">
+                    <strong>CORR {pctMagnitude(Math.abs(position.corr))} {money(position.correctionTrigger, 0)}</strong>
+                    <strong>DD_P {pctMagnitude(Math.abs(position.ddPlan))} {money(position.drawdownTrigger, 0)}</strong>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </>
       ) : null}

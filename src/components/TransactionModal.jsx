@@ -2,19 +2,23 @@ import React, {useMemo, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
 
 function buildForm(transaction, positions, today) {
+  const isCashTxn = (transaction?.ticker || positions[0]?.ticker || "").toUpperCase() === "CASH";
+  const cashAmount = transaction ? Number(transaction.shares || 0) * Number(transaction.price || 0) : "";
   if (!transaction) {
     return {
       ticker: positions[0]?.ticker || "",
       shares: "",
       price: "",
+      amount: "",
       date: today,
       type: "BUY",
     };
   }
   return {
     ticker: transaction.ticker || positions[0]?.ticker || "",
-    shares: String(transaction.shares ?? ""),
-    price: String(transaction.price ?? ""),
+    shares: isCashTxn ? "" : String(transaction.shares ?? ""),
+    price: isCashTxn ? "" : String(transaction.price ?? ""),
+    amount: isCashTxn ? String(cashAmount || "") : "",
     date: transaction.date || today,
     type: transaction.type || "BUY",
   };
@@ -33,13 +37,15 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
   function handleSubmit(event) {
     event.preventDefault();
     if (!form.ticker.trim()) return;
+    const shares = isCashPosition ? Number(form.amount || 0) : Number(form.shares || 0);
+    const price = isCashPosition ? 1 : Number(form.price || 0);
     onSubmit({
       id: transaction?.id,
       ticker: form.ticker.trim().toUpperCase(),
       type: form.type,
       date: form.date,
-      shares: Number(form.shares || 0),
-      price: Number(form.price || 0),
+      shares,
+      price,
       fees: 0,
       currency: "USD",
     });
@@ -65,14 +71,23 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
             <option value="SELL">{isCashPosition ? "Withdraw" : "SELL"}</option>
           </select>
         </label>
-        <label>
-          <span>Shares</span>
-          <input inputMode="decimal" value={form.shares} onChange={(e) => update("shares", e.target.value)} />
-        </label>
-        <label>
-          <span>Price</span>
-          <input inputMode="decimal" value={form.price} onChange={(e) => update("price", e.target.value)} />
-        </label>
+        {isCashPosition ? (
+          <label>
+            <span>Amount</span>
+            <input inputMode="decimal" value={form.amount} onChange={(e) => update("amount", e.target.value)} />
+          </label>
+        ) : (
+          <>
+            <label>
+              <span>Shares</span>
+              <input inputMode="decimal" value={form.shares} onChange={(e) => update("shares", e.target.value)} />
+            </label>
+            <label>
+              <span>Price</span>
+              <input inputMode="decimal" value={form.price} onChange={(e) => update("price", e.target.value)} />
+            </label>
+          </>
+        )}
         <label>
           <span>Date</span>
           <input type="date" value={form.date} onChange={(e) => update("date", e.target.value)} />

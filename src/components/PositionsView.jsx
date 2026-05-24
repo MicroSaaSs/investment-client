@@ -2,8 +2,10 @@ import React from "react";
 import { money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
 import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { ModalSheet } from "./ModalSheet";
+import { TrashIcon } from "./icons/TrashIcon";
 
 function companyLabel(position) {
+  if (position?.type === "CASH") return "Uninvested cash";
   return (position.company || "").trim() || "—";
 }
 
@@ -65,6 +67,14 @@ function SourceBadge({ source }) {
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
 }
 
+function isCashPosition(position) {
+  return position?.type === "CASH";
+}
+
+function valueOnlyPlaceholder(position, value) {
+  return isCashPosition(position) ? "--" : value;
+}
+
 const HOLDINGS_METRIC_COLUMNS = [
   { id: "price", label: "Price" },
   { id: "peakPrice", label: "Peak Price" },
@@ -84,6 +94,7 @@ export function PositionsView({
   onMobilePositionSummaryMetricsChange,
   positions,
   transactions,
+  onAddTransaction,
   onDeletePosition,
   onDeleteTransaction,
   onEditPosition,
@@ -209,7 +220,9 @@ export function PositionsView({
                   <td>
                     <div className="table-cell-stack">
                       <strong>{position.ticker}</strong>
-                      <small className="shares-tag">{Number(position.shares || 0).toLocaleString()} sh</small>
+                      {!isCashPosition(position) ? (
+                        <small className="shares-tag">{Number(position.shares || 0).toLocaleString()} sh</small>
+                      ) : null}
                     </div>
                   </td>
                   <td>
@@ -219,14 +232,16 @@ export function PositionsView({
                   </td>
                   {isColumnVisible("price") ? (
                     <td className="table-center">
-                      <div className="table-cell-stack table-cell-stack-center">
-                        <span>{money(position.price, 2)}</span>
-                        <small><SourceBadge source={position.priceSource} /></small>
-                      </div>
+                      {isCashPosition(position) ? "--" : (
+                        <div className="table-cell-stack table-cell-stack-center">
+                          <span>{money(position.price, 2)}</span>
+                          <small><SourceBadge source={position.priceSource} /></small>
+                        </div>
+                      )}
                     </td>
                   ) : null}
-                  {isColumnVisible("peakPrice") ? <td className="table-center">{money(position.peak, 2)}</td> : null}
-                  {isColumnVisible("avgPrice") ? <td className="table-center">{money(averagePrice(position), 2)}</td> : null}
+                  {isColumnVisible("peakPrice") ? <td className="table-center">{valueOnlyPlaceholder(position, money(position.peak, 2))}</td> : null}
+                  {isColumnVisible("avgPrice") ? <td className="table-center">{valueOnlyPlaceholder(position, money(averagePrice(position), 2))}</td> : null}
                   {isColumnVisible("value") ? (
                     <td className="table-center">
                       <div className="table-cell-stack table-cell-stack-center">
@@ -234,20 +249,22 @@ export function PositionsView({
                       </div>
                     </td>
                   ) : null}
-                  {isColumnVisible("pnlPercent") ? <td className="table-center">{pct(position.pnlPct)}</td> : null}
-                  {isColumnVisible("pnlValue") ? <td className="table-center">{money(pnlAmount(position), 0)}</td> : null}
+                  {isColumnVisible("pnlPercent") ? <td className="table-center">{valueOnlyPlaceholder(position, pct(position.pnlPct))}</td> : null}
+                  {isColumnVisible("pnlValue") ? <td className="table-center">{valueOnlyPlaceholder(position, money(pnlAmount(position), 0))}</td> : null}
                   {isColumnVisible("allocation") ? (
                     <td className="table-center">
-                      <div className="table-cell-stack table-cell-stack-center">
-                        <AllocationBlock position={position} />
-                      </div>
+                      {isCashPosition(position) ? "--" : (
+                        <div className="table-cell-stack table-cell-stack-center">
+                          <AllocationBlock position={position} />
+                        </div>
+                      )}
                     </td>
                   ) : null}
-                  {isColumnVisible("drawdown") ? <td className="table-center">{pct(position.dd)}</td> : null}
-                  {isColumnVisible("volatility") ? <td className="table-center">{pctMagnitude(position.volatility)}</td> : null}
+                  {isColumnVisible("drawdown") ? <td className="table-center">{valueOnlyPlaceholder(position, pct(position.dd))}</td> : null}
+                  {isColumnVisible("volatility") ? <td className="table-center">{valueOnlyPlaceholder(position, pctMagnitude(position.volatility))}</td> : null}
                   {isColumnVisible("triggers") ? (
                     <td className="table-center">
-                      <TriggerBlock position={position} />
+                      {isCashPosition(position) ? "--" : <TriggerBlock position={position} />}
                     </td>
                   ) : null}
                   {isColumnVisible("signal") ? <td className="table-center"><SignalPill signal={position.signal} /></td> : null}
@@ -269,7 +286,7 @@ export function PositionsView({
                         title="Delete holding"
                         type="button"
                       >
-                        <span aria-hidden="true">×</span>
+                        <TrashIcon />
                       </button>
                     </div>
                   </td>
@@ -284,6 +301,7 @@ export function PositionsView({
               compactStyle="inline"
               expanded={expandedMobileCard === position.id}
               key={position.id}
+              onAddTransaction={onAddTransaction}
               onDelete={onDeletePosition}
               onEdit={onEditPosition}
               onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
@@ -358,7 +376,7 @@ export function PositionsView({
                     title="Delete transaction"
                     type="button"
                   >
-                    <span aria-hidden="true">×</span>
+                    <TrashIcon />
                   </button>
                 </div>
               </div>

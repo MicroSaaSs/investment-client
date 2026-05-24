@@ -1,4 +1,5 @@
 import React from "react";
+import { TrashIcon } from "./icons/TrashIcon";
 
 export function PortfolioBar({
   portfolios,
@@ -77,7 +78,7 @@ export function PortfolioBar({
                   title="Delete portfolio"
                   type="button"
                 >
-                  <span aria-hidden="true">×</span>
+                  <TrashIcon />
                 </button>
               </div>
             </div>

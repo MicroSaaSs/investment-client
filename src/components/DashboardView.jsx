@@ -18,44 +18,54 @@ const EQUITY_MODES = [
   {value: "monthly", label: "Monthly"},
 ];
 
-function renderPiePercentLabel({percent, x, y}) {
-  if (!percent || percent <= 0) return null;
+function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent}) {
+  if (!name || !percent || percent <= 0) return null;
+  const RADIAN = Math.PI / 180;
+  const sin = Math.sin(-RADIAN * midAngle);
+  const cos = Math.cos(-RADIAN * midAngle);
+  const sx = cx + (outerRadius + 2) * cos;
+  const sy = cy + (outerRadius + 2) * sin;
+  const mx = cx + (outerRadius + 22) * cos;
+  const my = cy + (outerRadius + 28) * sin;
+  const ex = mx + (cos >= 0 ? 86 : -86);
+  const ey = my;
+  const textAnchor = cos >= 0 ? "start" : "end";
+  const textX = ex + (cos >= 0 ? 2 : -2);
   return (
-    <text
-      fill="#ffffff"
-      fontSize={18}
-      fontWeight={500}
-      textAnchor="middle"
-      x={x}
-      y={y}
-      dominantBaseline="central"
-    >
-      {`${Math.round(percent * 100)}%`}
-    </text>
+    <g>
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9aaccc" fill="none" />
+      <circle cx={sx} cy={sy} r={2} fill="#9aaccc" />
+      <text x={textX} y={ey} textAnchor={textAnchor} fill="#52658a">
+        <tspan x={textX} dy="0" fontSize={12} fontWeight={600}>{name}</tspan>
+        <tspan x={textX} dy="15" fontSize={12}>{`${(percent * 100).toFixed(1)}%`}</tspan>
+      </text>
+    </g>
   );
 }
 
-function AllocationLegend({items}) {
-  if (!items.length) {
-    return <div className="allocation-legend-empty">No active allocation data.</div>;
-  }
-  const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
+function AllocationPie({items}) {
+  if (!items.length) return <div className="allocation-legend-empty">No active allocation data.</div>;
   return (
-    <div className="allocation-legend">
-      {items.map((item, index) => {
-        const value = Number(item.value || 0);
-        const percent = total > 0 ? (value / total) * 100 : 0;
-        return (
-          <div className="allocation-legend-item" key={item.name}>
-            <span className="allocation-legend-name">
-              <i aria-hidden="true" className="allocation-legend-dot" style={{backgroundColor: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]}} />
-              {item.name}
-            </span>
-            <span className="allocation-legend-value">{percent.toFixed(1)}%</span>
-          </div>
-        );
-      })}
-    </div>
+    <ResponsiveContainer width="100%" height={360}>
+      <PieChart>
+        <Pie
+          data={items}
+          dataKey="value"
+          nameKey="name"
+          outerRadius={126}
+          innerRadius={0}
+          paddingAngle={0}
+          label={renderOuterNameLabel}
+          labelLine={false}
+          cx="50%"
+          cy="52%"
+          isAnimationActive={false}
+        >
+          {items.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
+        </Pie>
+        <Tooltip formatter={(value) => money(value, 0)} />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -145,26 +155,8 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
           </div>
           <div className="allocation-pie-layout">
             <div className="allocation-pie-chart">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={boughtAllocation}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={120}
-                    innerRadius={0}
-                    paddingAngle={0}
-                    label={renderPiePercentLabel}
-                    labelLine={false}
-                    isAnimationActive={false}
-                  >
-                    {boughtAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => money(value, 0)} />
-                </PieChart>
-              </ResponsiveContainer>
+              <AllocationPie items={boughtAllocation} />
             </div>
-            <AllocationLegend items={boughtAllocation} />
           </div>
         </section>
         <section className="panel allocation-pie-panel">
@@ -176,26 +168,8 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
           </div>
           <div className="allocation-pie-layout">
             <div className="allocation-pie-chart">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={currentAllocation}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={120}
-                    innerRadius={0}
-                    paddingAngle={0}
-                    label={renderPiePercentLabel}
-                    labelLine={false}
-                    isAnimationActive={false}
-                  >
-                    {currentAllocation.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => money(value, 0)} />
-                </PieChart>
-              </ResponsiveContainer>
+              <AllocationPie items={currentAllocation} />
             </div>
-            <AllocationLegend items={currentAllocation} />
           </div>
         </section>
       </div>
