@@ -1176,9 +1176,11 @@ button {
 .allocation-pie-chart {
   width: 100%;
   max-width: 660px;
+  overflow: visible;
 }
 .allocation-pie-chart .recharts-responsive-container {
   margin: 0 auto;
+  overflow: visible;
 }
 .allocation-legend {
   display: grid;
@@ -1348,6 +1350,14 @@ button {
   align-items: center;
   margin-top: 10px;
 }
+.holdings-columns-layout {
+  display: grid;
+  gap: 20px;
+}
+.holdings-order-section {
+  display: grid;
+  gap: 10px;
+}
 .holdings-columns-picker {
   position: relative;
   display: grid;
@@ -1364,6 +1374,51 @@ button {
 }
 .holdings-columns-option input {
   accent-color: #173565;
+}
+.holdings-columns-option-select {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+}
+.holdings-columns-option-select select {
+  width: 100%;
+}
+.position-order-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.position-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.position-order-row-actions {
+  display: flex;
+  gap: 6px;
+}
+.position-order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.portfolio-bar-position[draggable="true"],
+.mobile-position-card[draggable="true"],
+.positions-desktop-table tbody tr[draggable="true"] {
+  cursor: grab;
+}
+.positions-desktop-table tbody tr[data-drop-target="true"] td {
+  background: #f0f6ff;
+}
+.position-order-row[data-drop-target="true"] {
+  outline: 2px dashed #b9cceb;
+  border-radius: 10px;
+}
+.portfolio-bar-position.is-drop-target,
+.mobile-position-card.is-drop-target {
+  box-shadow: 0 0 0 2px #b9cceb inset;
 }
 .holdings-columns-sheet {
   width: min(560px, 92vw);
@@ -2741,6 +2796,10 @@ tbody td > small {
     grid-template-columns: 1fr;
     gap: 12px;
   }
+  .allocation-pie-chart {
+    max-width: 100%;
+    padding: 0 10px;
+  }
   .allocation-legend {
     max-height: none;
     overflow: visible;
@@ -2806,6 +2865,15 @@ tbody td > small {
   }
   .app-heading h1 {
     white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .allocation-pie-panel .panel-copy {
+    max-width: 100%;
+  }
+  .allocation-pie-chart {
+    padding: 0 16px;
   }
 }
 

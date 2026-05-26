@@ -1,9 +1,10 @@
 import React from "react";
-import { compactMoney, money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
+import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
 import { ModalSheet } from "./ModalSheet";
 import { getPositionSummaryMetricConfig, MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { PortfolioBar } from "./PortfolioBar";
 import { TrashIcon } from "./icons/TrashIcon";
+import { moveItemAfter, moveItemBefore, moveManualOrderItem, sortPositions } from "../utils/positionSort";
 
 function SignalBadge({ signal }) {
   const normalized = signal || "HOLD";
@@ -124,8 +125,8 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
                 <strong>{pct(position.dd)}</strong>
               </div>
               <div className="position-detail-grid-card">
-                <span>Volatility</span>
-                <strong>{pctMagnitude(position.volatility)}</strong>
+                <span>Avg Drawdown</span>
+                <strong>{pctNegative(position.avgDrawdown)}</strong>
               </div>
               <div className="position-detail-grid-card">
                 <span>Triggers</span>
@@ -157,21 +158,45 @@ export function PortfolioView({
   onDeletePosition,
   onAddTransaction,
   onMobilePositionSummaryMetricsChange,
+  onReorderPositions,
   onSelect,
   onCreate,
   onRename,
   onDelete,
 }) {
+  const dragPositionIdRef = React.useRef(null);
   const [detailPosition, setDetailPosition] = React.useState(null);
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
+  const [dragPositionId, setDragPositionId] = React.useState(null);
+  const [dropTargetId, setDropTargetId] = React.useState(null);
   const selected = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
   const activePositions = (metrics?.positions || []).filter((position) => position.mode !== "WATCHLIST");
-  const sortedPositions = [...activePositions].sort((left, right) => Number(right.current || 0) - Number(left.current || 0));
+  const sortedPositions = sortPositions(activePositions);
   const summaryMetricIds = normalizePositionSummaryMetricIds(mobilePositionSummaryMetrics);
   const includedCount = activePositions.filter((position) => position.includeInAllocation).length;
   const cashCount = activePositions.filter((position) => position.type === "CASH" || position.type === "CASH_ETF").length;
   const pnlPctValue = Number(metrics?.pnlPct || 0);
   const pnlTrendArrow = pnlPctValue < 0 ? "↓" : "↑";
+
+  async function handleDropOnPosition(targetPositionId, sourcePositionId = null, placement = "after") {
+    const movingId = sourcePositionId || dragPositionIdRef.current || dragPositionId;
+    if (!movingId || !targetPositionId || movingId === targetPositionId) return;
+    const orderIds = sortedPositions.map((position) => position.id);
+    const nextOrderIds = placement === "before"
+      ? moveItemBefore(orderIds, movingId, targetPositionId)
+      : moveItemAfter(orderIds, movingId, targetPositionId);
+    setDragPositionId(null);
+    dragPositionIdRef.current = null;
+    setDropTargetId(null);
+    await onReorderPositions?.(nextOrderIds);
+  }
+
+  async function movePositionByStep(positionId, direction) {
+    const orderIds = sortedPositions.map((position) => position.id);
+    const nextOrderIds = moveManualOrderItem(orderIds, positionId, direction);
+    if (nextOrderIds.join(",") === orderIds.join(",")) return;
+    await onReorderPositions?.(nextOrderIds);
+  }
 
   return (
     <main className="portfolio-view">
@@ -193,6 +218,8 @@ export function PortfolioView({
               <PositionSummaryMetricControl
                 className="positions-heading-settings"
                 onChange={onMobilePositionSummaryMetricsChange}
+                onReorderPositions={onReorderPositions}
+                positions={activePositions}
                 selectedMetricIds={summaryMetricIds}
               />
             </div>
@@ -200,7 +227,33 @@ export function PortfolioView({
               <div className="portfolio-bar-summary-list">
                 {sortedPositions.map((position) => (
                   <button
-                    className="portfolio-bar-position"
+                    className={`portfolio-bar-position${dropTargetId === position.id ? " is-drop-target" : ""}`}
+                    draggable
+                    onDragEnd={() => {
+                      setDragPositionId(null);
+                      dragPositionIdRef.current = null;
+                      setDropTargetId(null);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setDropTargetId(position.id);
+                    }}
+                    onDragStart={(event) => {
+                      setDragPositionId(position.id);
+                      dragPositionIdRef.current = position.id;
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", position.id);
+                      event.dataTransfer.setData("text", position.id);
+                    }}
+                    onDrop={async (event) => {
+                      event.preventDefault();
+                      const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
+                      if (!sourceId) return;
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                      await handleDropOnPosition(position.id, sourceId, placement);
+                    }}
+                    onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
                     key={position.id}
                     onClick={() => setDetailPosition(position)}
                     type="button"
@@ -232,14 +285,42 @@ export function PortfolioView({
                 {sortedPositions.map((position) => (
                   <MobilePositionCard
                     compactStyle="inline"
+                    draggable
                     expanded={expandedMobileCard === position.id}
                     key={position.id}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDragStart={(event) => {
+                      setDragPositionId(position.id);
+                      dragPositionIdRef.current = position.id;
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", position.id);
+                      event.dataTransfer.setData("text", position.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragPositionId(null);
+                      dragPositionIdRef.current = null;
+                    }}
+                    onDrop={async (event) => {
+                      event.preventDefault();
+                      const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
+                      if (!sourceId) return;
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                      await handleDropOnPosition(position.id, sourceId, placement);
+                    }}
+                    onDragOverCapture={() => setDropTargetId(position.id)}
+                    onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
                     onAddTransaction={onAddTransaction}
                     onDelete={onDeletePosition}
                     onEdit={onEditPosition}
+                    canMoveUp={sortedPositions.findIndex((item) => item.id === position.id) > 0}
+                    canMoveDown={sortedPositions.findIndex((item) => item.id === position.id) < sortedPositions.length - 1}
+                    onMoveUp={() => movePositionByStep(position.id, "up")}
+                    onMoveDown={() => movePositionByStep(position.id, "down")}
                     onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
                     position={position}
                     summaryMetricIds={summaryMetricIds}
+                    dropTarget={dropTargetId === position.id}
                   />
                 ))}
                 {!sortedPositions.length ? <div className="portfolio-bar-summary-empty">Add positions to see the portfolio overview here.</div> : null}
@@ -253,7 +334,7 @@ export function PortfolioView({
               <div>
                 <p className="eyebrow">OVERVIEW</p>
                 <h2>{selected.name} at a glance</h2>
-                <p className="panel-copy">Quick portfolio context before you jump into holdings, watch ideas, or volatility analysis.</p>
+                <p className="panel-copy">Quick portfolio context before you jump into holdings, watch ideas, or average drawdown analysis.</p>
               </div>
             </div>
             <div className="portfolio-overview-grid">

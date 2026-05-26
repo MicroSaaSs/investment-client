@@ -10,8 +10,8 @@ const DEFAULT_FORM = {
   correctionPct: "-10",
   drawdownPlanPct: "-20",
   peakLookbackMonths: "5",
-  volatilityPeriod: "36",
-  volatilityInterval: "4",
+  avgDrawdownPeriod: "36",
+  avgDrawdownInterval: "4",
 };
 
 function buildForm(position) {
@@ -25,8 +25,8 @@ function buildForm(position) {
     correctionPct: String(position.correctionPct ?? position.corr ?? -10),
     drawdownPlanPct: String(position.drawdownPlanPct ?? position.ddPlan ?? -20),
     peakLookbackMonths: String(normalizeMonthsValue(position.peakLookbackMonths, 5)),
-    volatilityPeriod: String(normalizeMonthsValue(position.volatilityPeriod, 36)),
-    volatilityInterval: String(normalizeMonthsValue(position.volatilityInterval, 4)),
+    avgDrawdownPeriod: String(normalizeMonthsValue(position.avgDrawdownPeriod, 36)),
+    avgDrawdownInterval: String(normalizeMonthsValue(position.avgDrawdownInterval, 4)),
   };
 }
 
@@ -41,6 +41,10 @@ function buildAllocationTargets(position, positions) {
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function closeEnough(left, right) {
+  return Math.abs(Number(left || 0) - Number(right || 0)) < 0.0001;
 }
 
 function normalizeMonthsValue(value, fallback) {
@@ -128,22 +132,22 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
   }, [activePosition?.id, allocationTargets, form.includeInAllocation, form.targetAllocationPct, positions]);
 
   const volatilityValidation = useMemo(() => {
-    const period = toNumber(form.volatilityPeriod, 0);
-    const interval = toNumber(form.volatilityInterval, 0);
+    const period = toNumber(form.avgDrawdownPeriod, 0);
+    const interval = toNumber(form.avgDrawdownInterval, 0);
     if (period <= 0 || interval <= 0) {
-      return {valid: false, message: "Volatility period and interval must be greater than 0."};
+      return {valid: false, message: "Avg drawdown period and interval must be greater than 0."};
     }
     if (interval > period) {
-      return {valid: false, message: "Volatility interval cannot be greater than volatility period."};
+      return {valid: false, message: "Avg drawdown interval cannot be greater than avg drawdown period."};
     }
     if (period % interval !== 0) {
-      return {valid: false, message: "Volatility period must be divisible by volatility interval."};
+      return {valid: false, message: "Avg drawdown period must be divisible by avg drawdown interval."};
     }
     if ((period / interval) > 12) {
-      return {valid: false, message: "Volatility setup supports up to 12 intervals."};
+      return {valid: false, message: "Avg drawdown setup supports up to 12 intervals."};
     }
     return {valid: true, message: ""};
-  }, [form.volatilityInterval, form.volatilityPeriod]);
+  }, [form.avgDrawdownInterval, form.avgDrawdownPeriod]);
 
   function update(key, value) {
     setForm((current) => ({...current, [key]: value}));
@@ -190,17 +194,19 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
       correctionPct: isWatchlist ? -10 : Number(form.correctionPct || 0),
       drawdownPlanPct: isWatchlist ? -20 : Number(form.drawdownPlanPct || 0),
       peakLookbackMonths: Number(form.peakLookbackMonths || 5),
-      volatilityPeriod: Number(form.volatilityPeriod || 36),
-      volatilityInterval: Number(form.volatilityInterval || 4),
-      allocationAdjustments: isWatchlist ? [] : allocation.rows.map((row) => ({
-        id: row.id,
-        targetAllocationPct: row.target,
-      })),
+      avgDrawdownPeriod: Number(form.avgDrawdownPeriod || 36),
+      avgDrawdownInterval: Number(form.avgDrawdownInterval || 4),
+      allocationAdjustments: isWatchlist ? [] : allocation.rows
+        .filter((row) => !closeEnough(row.target, row.position?.targetAllocationPct ?? row.position?.target))
+        .map((row) => ({
+          id: row.id,
+          targetAllocationPct: row.target,
+        })),
     });
   }
 
   return (
-    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and volatility before it joins the portfolio." : "Cash ETF uses real market pricing. Cash bucket is uninvested cash fixed at $1."} onClose={onClose}>
+    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and avg drawdown before it joins the portfolio." : "Cash ETF uses real market pricing. Cash bucket is uninvested cash fixed at $1."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
         {!isWatchlist ? (
           <div className="editor-mode-toggle modal-actions-wide">
@@ -258,7 +264,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
         <div className="modal-section modal-actions-wide">
           <div className="modal-section-heading">
             <p className="modal-kicker">Risk settings</p>
-            <h4>Target and volatility controls</h4>
+            <h4>Target and avg drawdown controls</h4>
             <p className="risk-grid-note">Set when signals should trigger and how far back risk should be measured.</p>
           </div>
           <div className="risk-grid">
@@ -291,16 +297,16 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
               </div>
             </label>
             <label className="risk-grid-row2">
-              <span>Volatility window</span>
+              <span>Avg drawdown window</span>
               <div className="input-unit-wrap">
-                <input inputMode="numeric" value={form.volatilityPeriod} onChange={(e) => updateNumericField("volatilityPeriod", e.target.value)} />
+                <input inputMode="numeric" value={form.avgDrawdownPeriod} onChange={(e) => updateNumericField("avgDrawdownPeriod", e.target.value)} />
                 <i>mo</i>
               </div>
             </label>
             <label className="risk-grid-row2">
               <span>Step size</span>
               <div className="input-unit-wrap">
-                <select value={form.volatilityInterval} onChange={(e) => update("volatilityInterval", e.target.value)}>
+                <select value={form.avgDrawdownInterval} onChange={(e) => update("avgDrawdownInterval", e.target.value)}>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>

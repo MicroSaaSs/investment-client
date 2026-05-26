@@ -1,7 +1,8 @@
 import React from "react";
-import { compactMoney, money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
+import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
+import { buildManualOrderIds, moveManualOrderItem, sortPositions } from "../utils/positionSort";
 
 export const DEFAULT_POSITION_SUMMARY_METRICS = ["valueCurrent", "allocationCurrent", "shares"];
 
@@ -17,7 +18,7 @@ export const POSITION_SUMMARY_METRIC_OPTIONS = [
   { id: "pnlPercent", label: "PnL %" },
   { id: "pnlValue", label: "PnL $" },
   { id: "drawdown", label: "Drawdown" },
-  { id: "volatility", label: "Volatility" },
+  { id: "avgDrawdown", label: "Avg Drawdown" },
   { id: "corrPercent", label: "CORR %" },
   { id: "corrTrigger", label: "CORR Trigger $" },
   { id: "ddpPercent", label: "DD_P %" },
@@ -139,11 +140,11 @@ export function getPositionSummaryMetricConfig(id, position) {
       detailValue: pct(position.dd),
       detailMeta: `Peak ${money(position.peak, 2)}`,
     },
-    volatility: {
-      id: "volatility",
-      label: "Volatility",
-      summary: pctMagnitude(position.volatility),
-      detailValue: pctMagnitude(position.volatility),
+    avgDrawdown: {
+      id: "avgDrawdown",
+      label: "Avg Drawdown",
+      summary: pctNegative(position.avgDrawdown),
+      detailValue: pctNegative(position.avgDrawdown),
       detailMeta: `Peak ${money(position.peak, 2)}`,
     },
     corrPercent: {
@@ -228,17 +229,6 @@ export function PositionSummaryMetricPicker({ selectedMetricIds, onChange, showH
               <strong>{selectedMetricIds.length}/3 selected</strong>
               <span>Tap metrics to include in compact cards.</span>
             </div>
-            {onApply ? (
-              <button
-                aria-label="Apply metric selection"
-                className="toolbar-icon-button modal-icon-action position-metric-apply-icon"
-                onClick={onApply}
-                title="Apply"
-                type="button"
-              >
-                <span aria-hidden="true">✓</span>
-              </button>
-            ) : null}
           </div>
         </div>
       )}
@@ -264,12 +254,20 @@ export function PositionSummaryMetricPicker({ selectedMetricIds, onChange, showH
   );
 }
 
-export function PositionSummaryMetricControl({ selectedMetricIds, onChange, className = "" }) {
+export function PositionSummaryMetricControl({
+  selectedMetricIds,
+  onChange,
+  className = "",
+  positions = [],
+  onReorderPositions = null,
+}) {
   const [open, setOpen] = React.useState(false);
   const [draftMetricIds, setDraftMetricIds] = React.useState(() => normalizePositionSummaryMetricIds(selectedMetricIds));
+  const [draftOrderIds, setDraftOrderIds] = React.useState(() => buildManualOrderIds(positions));
 
   function openModal() {
     setDraftMetricIds(normalizePositionSummaryMetricIds(selectedMetricIds));
+    setDraftOrderIds(buildManualOrderIds(positions));
     setOpen(true);
   }
 
@@ -277,10 +275,46 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
     setOpen(false);
   }
 
-  function applySelection() {
-    onChange(normalizePositionSummaryMetricIds(draftMetricIds));
+  function metricIdsEqual(left, right) {
+    if (left.length !== right.length) return false;
+    return left.every((id, index) => id === right[index]);
+  }
+
+  function orderIdsEqual(left, right) {
+    if (left.length !== right.length) return false;
+    return left.every((id, index) => id === right[index]);
+  }
+
+  async function applySelection() {
+    const normalizedDraftMetricIds = normalizePositionSummaryMetricIds(draftMetricIds);
+    const normalizedCurrentMetricIds = normalizePositionSummaryMetricIds(selectedMetricIds);
+    if (!metricIdsEqual(normalizedDraftMetricIds, normalizedCurrentMetricIds)) {
+      await onChange(normalizedDraftMetricIds);
+    }
+    if (onReorderPositions) {
+      const currentOrderIds = buildManualOrderIds(positions);
+      if (!orderIdsEqual(draftOrderIds, currentOrderIds)) {
+        await onReorderPositions(draftOrderIds);
+      }
+    }
     setOpen(false);
   }
+
+  const positionsById = React.useMemo(() => {
+    const map = new Map();
+    for (const position of positions) {
+      if (position?.id) map.set(position.id, position);
+    }
+    return map;
+  }, [positions]);
+
+  const draftOrderedPositions = React.useMemo(() => {
+    const picked = draftOrderIds
+      .map((id) => positionsById.get(id))
+      .filter(Boolean);
+    const missing = sortPositions(positions).filter((position) => !draftOrderIds.includes(position.id));
+    return [...picked, ...missing];
+  }, [draftOrderIds, positionsById, positions]);
 
   return (
     <div className={`position-metric-control ${className}`.trim()}>
@@ -298,8 +332,8 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
         <ModalSheet
           headerActions={(
             <div className="metrics-picker-modal-actions">
-              <button aria-label="Discard metric selection" className="toolbar-icon-button modal-icon-action" onClick={closeModal} title="Discard" type="button">
-                <TrashIcon />
+              <button aria-label="Close metric picker" className="toolbar-icon-button modal-icon-action" onClick={closeModal} title="Close" type="button">
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           )}
@@ -310,6 +344,47 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
           subtitle="Pick up to 3 metrics for compact cards."
           title="Summary metrics"
         >
+          <div className="holdings-columns-picker">
+            <div className="holdings-columns-option holdings-columns-option-select">
+              <div className="position-order-header">
+                <span>Position order (manual)</span>
+                <button
+                  aria-label="Apply metric selection"
+                  className="toolbar-icon-button modal-icon-action position-metric-apply-icon"
+                  onClick={applySelection}
+                  title="Apply"
+                  type="button"
+                >
+                  <span aria-hidden="true">✓</span>
+                </button>
+              </div>
+              <div className="position-order-list">
+                {draftOrderedPositions.map((position, index) => (
+                  <div className="position-order-row" key={position.id}>
+                    <strong>{position.ticker}</strong>
+                    <div className="position-order-row-actions">
+                      <button
+                        className="mini-button"
+                        disabled={index === 0}
+                        onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "up"))}
+                        type="button"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="mini-button"
+                        disabled={index === draftOrderedPositions.length - 1}
+                        onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "down"))}
+                        type="button"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           <PositionSummaryMetricPicker onApply={applySelection} onChange={setDraftMetricIds} selectedMetricIds={draftMetricIds} showHeader={false} />
         </ModalSheet>
       ) : null}
@@ -320,6 +395,15 @@ export function PositionSummaryMetricControl({ selectedMetricIds, onChange, clas
 export function MobilePositionCard({
   expanded,
   compactStyle = "chips",
+  draggable = false,
+  onDragOver,
+  onDragStart,
+  onDrop,
+  dropTarget = false,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveUp,
+  onMoveDown,
   onAddTransaction,
   onDelete,
   onEdit,
@@ -337,7 +421,13 @@ export function MobilePositionCard({
   }
 
   return (
-    <article className={`mobile-card mobile-card-position mobile-position-card${expanded ? " is-expanded" : ""}`}>
+    <article
+      className={`mobile-card mobile-card-position mobile-position-card${expanded ? " is-expanded" : ""}${dropTarget ? " is-drop-target" : ""}`}
+      draggable={draggable}
+      onDragOver={onDragOver}
+      onDragStart={onDragStart}
+      onDrop={onDrop}
+    >
       <div
         aria-expanded={expanded}
         className="mobile-position-card-toggle"
@@ -363,8 +453,38 @@ export function MobilePositionCard({
               ))}
             </div>
           ) : null}
-          {expanded && (onEdit || onDelete || onAddTransaction) ? (
+          {expanded && (onEdit || onDelete || onAddTransaction || onMoveUp || onMoveDown) ? (
             <div className="mobile-position-card-actions mobile-position-card-actions-inline">
+              {onMoveUp || onMoveDown ? (
+                <>
+                  <button
+                    aria-label={`Move ${position.ticker} up`}
+                    className="toolbar-icon-button mobile-position-card-action"
+                    disabled={!canMoveUp}
+                    onClick={(event) => {
+                      event?.stopPropagation?.();
+                      onMoveUp?.(position);
+                    }}
+                    title="Move up"
+                    type="button"
+                  >
+                    <span aria-hidden="true">↑</span>
+                  </button>
+                  <button
+                    aria-label={`Move ${position.ticker} down`}
+                    className="toolbar-icon-button mobile-position-card-action"
+                    disabled={!canMoveDown}
+                    onClick={(event) => {
+                      event?.stopPropagation?.();
+                      onMoveDown?.(position);
+                    }}
+                    title="Move down"
+                    type="button"
+                  >
+                    <span aria-hidden="true">↓</span>
+                  </button>
+                </>
+              ) : null}
               <ActionButton
                 icon={(
                   <span className="txn-icon-stack">
@@ -461,8 +581,8 @@ export function MobilePositionCard({
                   <strong>{pct(position.dd)}</strong>
                 </div>
                 <div className="mobile-position-card-stat">
-                  <span>Volatility</span>
-                  <strong>{pctMagnitude(position.volatility)}</strong>
+                  <span>Avg Drawdown</span>
+                  <strong>{pctNegative(position.avgDrawdown)}</strong>
                 </div>
                 <div className="mobile-position-card-stat">
                   <span>Triggers</span>

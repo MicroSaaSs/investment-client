@@ -18,19 +18,25 @@ const EQUITY_MODES = [
   {value: "monthly", label: "Monthly"},
 ];
 
-function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent}) {
+function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, chartWidth, compact}) {
   if (!name || !percent || percent <= 0) return null;
   const RADIAN = Math.PI / 180;
   const sin = Math.sin(-RADIAN * midAngle);
   const cos = Math.cos(-RADIAN * midAngle);
+  const sidePadding = compact ? 10 : 16;
+  const lineSpan = compact ? 56 : 86;
   const sx = cx + (outerRadius + 2) * cos;
   const sy = cy + (outerRadius + 2) * sin;
-  const mx = cx + (outerRadius + 22) * cos;
-  const my = cy + (outerRadius + 28) * sin;
-  const ex = mx + (cos >= 0 ? 86 : -86);
+  const mx = cx + (outerRadius + (compact ? 14 : 22)) * cos;
+  const my = cy + (outerRadius + (compact ? 18 : 28)) * sin;
+  const rawEx = mx + (cos >= 0 ? lineSpan : -lineSpan);
+  const ex = compact ? Math.max(sidePadding, Math.min(chartWidth - sidePadding, rawEx)) : rawEx;
   const ey = my;
-  const textAnchor = cos >= 0 ? "start" : "end";
-  const textX = ex + (cos >= 0 ? 2 : -2);
+  const textAnchor = compact ? "start" : (cos >= 0 ? "start" : "end");
+  const rawTextX = ex + (cos >= 0 ? 4 : -4);
+  const textX = compact
+    ? (cos >= 0 ? Math.min(chartWidth - sidePadding, ex + 4) : Math.max(sidePadding, ex + 4))
+    : rawTextX;
   return (
     <g>
       <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9aaccc" fill="none" />
@@ -44,21 +50,38 @@ function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent}) {
 }
 
 function AllocationPie({items}) {
+  const [compactLabels, setCompactLabels] = React.useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 640px)").matches;
+  });
+  React.useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const media = window.matchMedia("(max-width: 640px)");
+    const handleChange = () => setCompactLabels(media.matches);
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
   if (!items.length) return <div className="allocation-legend-empty">No active allocation data.</div>;
+  const labelRenderer = (props) => renderOuterNameLabel({
+    ...props,
+    chartWidth: compactLabels ? 300 : 360,
+    compact: compactLabels,
+  });
   return (
-    <ResponsiveContainer width="100%" height={360}>
+    <ResponsiveContainer width="100%" height={compactLabels ? 320 : 360}>
       <PieChart>
         <Pie
           data={items}
           dataKey="value"
           nameKey="name"
-          outerRadius={126}
+          outerRadius={compactLabels ? 96 : 126}
           innerRadius={0}
           paddingAngle={0}
-          label={renderOuterNameLabel}
+          label={labelRenderer}
           labelLine={false}
           cx="50%"
-          cy="52%"
+          cy={compactLabels ? "56%" : "52%"}
           isAnimationActive={false}
         >
           {items.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}

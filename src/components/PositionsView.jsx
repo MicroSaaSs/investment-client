@@ -1,8 +1,9 @@
 import React from "react";
-import { money, pct, pctMagnitude, pctPlain, sourceLabel } from "../utils/format";
+import { money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
 import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
+import { buildManualOrderIds, moveItemAfter, moveItemBefore, moveManualOrderItem, sortPositions } from "../utils/positionSort";
 
 function companyLabel(position) {
   if (position?.type === "CASH") return "Uninvested cash";
@@ -80,11 +81,10 @@ const HOLDINGS_METRIC_COLUMNS = [
   { id: "peakPrice", label: "Peak Price" },
   { id: "avgPrice", label: "Avg Price" },
   { id: "value", label: "Value" },
-  { id: "pnlPercent", label: "PnL %" },
-  { id: "pnlValue", label: "PnL $" },
+  { id: "pnl", label: "PnL" },
   { id: "allocation", label: "Allocation" },
   { id: "drawdown", label: "Drawdown" },
-  { id: "volatility", label: "Volatility" },
+  { id: "avgDrawdown", label: "Avg Drawdown" },
   { id: "triggers", label: "Triggers" },
   { id: "signal", label: "Signal" },
 ];
@@ -92,6 +92,7 @@ const HOLDINGS_METRIC_COLUMNS = [
 export function PositionsView({
   mobilePositionSummaryMetrics,
   onMobilePositionSummaryMetricsChange,
+  onReorderPositions,
   positions,
   transactions,
   onAddTransaction,
@@ -100,12 +101,31 @@ export function PositionsView({
   onEditPosition,
   onEditTransaction,
 }) {
+  const dragPositionIdRef = React.useRef(null);
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState("positions");
   const [showColumnsPicker, setShowColumnsPicker] = React.useState(false);
+  const [dragPositionId, setDragPositionId] = React.useState(null);
+  const [draftOrderIds, setDraftOrderIds] = React.useState(() => buildManualOrderIds(positions));
+  const [draftDragId, setDraftDragId] = React.useState(null);
+  const [dropTargetId, setDropTargetId] = React.useState(null);
+  const [draftDropTargetId, setDraftDropTargetId] = React.useState(null);
   const [visibleColumns, setVisibleColumns] = React.useState(() => new Set(HOLDINGS_METRIC_COLUMNS.map((column) => column.id)));
   const summaryMetricIds = normalizePositionSummaryMetricIds(mobilePositionSummaryMetrics);
+  const sortedPositions = sortPositions(positions);
   const isColumnVisible = React.useCallback((columnId) => visibleColumns.has(columnId), [visibleColumns]);
+  const positionsById = React.useMemo(() => {
+    const map = new Map();
+    for (const position of positions) {
+      if (position?.id) map.set(position.id, position);
+    }
+    return map;
+  }, [positions]);
+  const draftOrderedPositions = React.useMemo(() => {
+    const picked = draftOrderIds.map((id) => positionsById.get(id)).filter(Boolean);
+    const missing = sortedPositions.filter((position) => !draftOrderIds.includes(position.id));
+    return [...picked, ...missing];
+  }, [draftOrderIds, positionsById, sortedPositions]);
 
   const toggleColumn = React.useCallback((columnId) => {
     setVisibleColumns((current) => {
@@ -118,6 +138,32 @@ export function PositionsView({
       return next;
     });
   }, []);
+
+  async function applyManualOrder() {
+    if (!onReorderPositions) return;
+    await onReorderPositions(draftOrderedPositions.map((position) => position.id));
+    setShowColumnsPicker(false);
+  }
+
+  async function handleDropOnPosition(targetPositionId, sourcePositionId = null, placement = "after") {
+    const movingId = sourcePositionId || dragPositionIdRef.current || dragPositionId;
+    if (!movingId || !targetPositionId || movingId === targetPositionId) return;
+    const orderIds = sortedPositions.map((position) => position.id);
+    const nextOrderIds = placement === "before"
+      ? moveItemBefore(orderIds, movingId, targetPositionId)
+      : moveItemAfter(orderIds, movingId, targetPositionId);
+    setDragPositionId(null);
+    dragPositionIdRef.current = null;
+    setDropTargetId(null);
+    await onReorderPositions?.(nextOrderIds);
+  }
+
+  async function movePositionByStep(positionId, direction) {
+    const orderIds = sortedPositions.map((position) => position.id);
+    const nextOrderIds = moveManualOrderItem(orderIds, positionId, direction);
+    if (nextOrderIds.join(",") === orderIds.join(",")) return;
+    await onReorderPositions?.(nextOrderIds);
+  }
 
   return (
     <div className="positions-layout">
@@ -139,13 +185,18 @@ export function PositionsView({
                 <PositionSummaryMetricControl
                   className="panel-subtab-control panel-subtab-control-mobile-only"
                   onChange={onMobilePositionSummaryMetricsChange}
+                  onReorderPositions={onReorderPositions}
+                  positions={positions}
                   selectedMetricIds={summaryMetricIds}
                 />
                 <div className="panel-subtab-control panel-subtab-control-desktop-only">
                   <button
                     aria-expanded={showColumnsPicker}
                     className={`position-metric-control-button ${showColumnsPicker ? "active" : ""}`}
-                    onClick={() => setShowColumnsPicker((current) => !current)}
+                    onClick={() => {
+                      setDraftOrderIds(buildManualOrderIds(positions));
+                      setShowColumnsPicker((current) => !current);
+                    }}
                     title="Choose visible columns"
                     type="button"
                   >
@@ -176,21 +227,76 @@ export function PositionsView({
         {showColumnsPicker ? (
           <ModalSheet
             title="COLUMN VISIBILITY"
-            subtitle="Choose holdings table columns"
+            subtitle="Choose holdings table columns and manual order"
             onClose={() => setShowColumnsPicker(false)}
             className="holdings-columns-sheet"
           >
-            <div className="holdings-columns-picker" role="dialog" aria-label="Holdings column picker">
-              {HOLDINGS_METRIC_COLUMNS.map((column) => (
-                <label className="holdings-columns-option" key={column.id}>
-                  <input
-                    checked={isColumnVisible(column.id)}
-                    onChange={() => toggleColumn(column.id)}
-                    type="checkbox"
-                  />
-                  <span>{column.label}</span>
-                </label>
-              ))}
+            <div className="holdings-columns-layout" role="dialog" aria-label="Holdings column picker">
+              <div className="holdings-order-section">
+                <span>Position order (manual)</span>
+                <div className="position-order-list">
+                  {draftOrderedPositions.map((position, index) => (
+                    <div
+                      className="position-order-row"
+                      draggable
+                      key={position.id}
+                      onDragEnd={() => setDraftDragId(null)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDraftDropTargetId(position.id);
+                      }}
+                      onDragStart={(event) => {
+                        setDraftDragId(position.id);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", position.id);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const sourceId = draftDragId || event.dataTransfer.getData("text/plain");
+                        if (!sourceId) return;
+                        setDraftOrderIds((current) => moveItemBefore(current, sourceId, position.id));
+                        setDraftDragId(null);
+                        setDraftDropTargetId(null);
+                      }}
+                      onDragLeave={() => setDraftDropTargetId((current) => (current === position.id ? null : current))}
+                      data-drop-target={draftDropTargetId === position.id ? "true" : "false"}
+                    >
+                      <strong>{position.ticker}</strong>
+                      <div className="position-order-row-actions">
+                        <button
+                          className="mini-button"
+                          disabled={index === 0}
+                          onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "up"))}
+                          type="button"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className="mini-button"
+                          disabled={index === draftOrderedPositions.length - 1}
+                          onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "down"))}
+                          type="button"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="action-button action-button-secondary" onClick={applyManualOrder} type="button">Apply order</button>
+              </div>
+              <div className="holdings-columns-picker">
+                {HOLDINGS_METRIC_COLUMNS.map((column) => (
+                  <label className="holdings-columns-option" key={column.id}>
+                    <input
+                      checked={isColumnVisible(column.id)}
+                      onChange={() => toggleColumn(column.id)}
+                      type="checkbox"
+                    />
+                    <span>{column.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </ModalSheet>
         ) : null}
@@ -204,19 +310,47 @@ export function PositionsView({
                 {isColumnVisible("peakPrice") ? <th className="table-center">Peak Price</th> : null}
                 {isColumnVisible("avgPrice") ? <th className="table-center">Avg Price</th> : null}
                 {isColumnVisible("value") ? <th className="table-center">Value</th> : null}
-                {isColumnVisible("pnlPercent") ? <th className="table-center">PnL %</th> : null}
-                {isColumnVisible("pnlValue") ? <th className="table-center">PnL $</th> : null}
+                {isColumnVisible("pnl") ? <th className="table-center">PnL</th> : null}
                 {isColumnVisible("allocation") ? <th className="table-center">Allocation</th> : null}
                 {isColumnVisible("drawdown") ? <th className="table-center">Drawdown</th> : null}
-                {isColumnVisible("volatility") ? <th className="table-center">Volatility</th> : null}
+                {isColumnVisible("avgDrawdown") ? <th className="table-center">Avg Drawdown</th> : null}
                 {isColumnVisible("triggers") ? <th className="table-center">Triggers</th> : null}
                 {isColumnVisible("signal") ? <th className="table-center">Signal</th> : null}
                 <th className="table-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {positions.map((position) => (
-                <tr key={position.id}>
+              {sortedPositions.map((position) => (
+                <tr
+                  draggable
+                  key={position.id}
+                  onDragEnd={() => {
+                    setDragPositionId(null);
+                    dragPositionIdRef.current = null;
+                    setDropTargetId(null);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDropTargetId(position.id);
+                  }}
+                  onDragStart={(event) => {
+                    setDragPositionId(position.id);
+                    dragPositionIdRef.current = position.id;
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", position.id);
+                    event.dataTransfer.setData("text", position.id);
+                  }}
+                  onDrop={async (event) => {
+                    event.preventDefault();
+                    const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
+                    if (!sourceId) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                    await handleDropOnPosition(position.id, sourceId, placement);
+                  }}
+                  onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
+                  data-drop-target={dropTargetId === position.id ? "true" : "false"}
+                >
                   <td>
                     <div className="table-cell-stack">
                       <strong>{position.ticker}</strong>
@@ -249,8 +383,16 @@ export function PositionsView({
                       </div>
                     </td>
                   ) : null}
-                  {isColumnVisible("pnlPercent") ? <td className="table-center">{valueOnlyPlaceholder(position, pct(position.pnlPct))}</td> : null}
-                  {isColumnVisible("pnlValue") ? <td className="table-center">{valueOnlyPlaceholder(position, money(pnlAmount(position), 0))}</td> : null}
+                  {isColumnVisible("pnl") ? (
+                    <td className="table-center">
+                      {isCashPosition(position) ? "--" : (
+                        <div className="table-cell-stack table-cell-stack-center">
+                          <span>{pct(position.pnlPct)}</span>
+                          <span>{money(pnlAmount(position), 0)}</span>
+                        </div>
+                      )}
+                    </td>
+                  ) : null}
                   {isColumnVisible("allocation") ? (
                     <td className="table-center">
                       {isCashPosition(position) ? "--" : (
@@ -261,7 +403,7 @@ export function PositionsView({
                     </td>
                   ) : null}
                   {isColumnVisible("drawdown") ? <td className="table-center">{valueOnlyPlaceholder(position, pct(position.dd))}</td> : null}
-                  {isColumnVisible("volatility") ? <td className="table-center">{valueOnlyPlaceholder(position, pctMagnitude(position.volatility))}</td> : null}
+                  {isColumnVisible("avgDrawdown") ? <td className="table-center">{valueOnlyPlaceholder(position, pctNegative(position.avgDrawdown))}</td> : null}
                   {isColumnVisible("triggers") ? (
                     <td className="table-center">
                       {isCashPosition(position) ? "--" : <TriggerBlock position={position} />}
@@ -296,17 +438,45 @@ export function PositionsView({
           </table>
         </div>
         <div className="mobile-list">
-          {positions.map((position) => (
+          {sortedPositions.map((position) => (
             <MobilePositionCard
               compactStyle="inline"
+              draggable
               expanded={expandedMobileCard === position.id}
               key={position.id}
+              onDragOver={(event) => event.preventDefault()}
+              onDragStart={(event) => {
+                setDragPositionId(position.id);
+                dragPositionIdRef.current = position.id;
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", position.id);
+                event.dataTransfer.setData("text", position.id);
+              }}
+              onDragEnd={() => {
+                setDragPositionId(null);
+                dragPositionIdRef.current = null;
+              }}
+              onDrop={async (event) => {
+                event.preventDefault();
+                const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
+                if (!sourceId) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                await handleDropOnPosition(position.id, sourceId, placement);
+              }}
+              onDragOverCapture={() => setDropTargetId(position.id)}
+              onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
               onAddTransaction={onAddTransaction}
               onDelete={onDeletePosition}
               onEdit={onEditPosition}
+              canMoveUp={sortedPositions.findIndex((item) => item.id === position.id) > 0}
+              canMoveDown={sortedPositions.findIndex((item) => item.id === position.id) < sortedPositions.length - 1}
+              onMoveUp={() => movePositionByStep(position.id, "up")}
+              onMoveDown={() => movePositionByStep(position.id, "down")}
               onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
               position={position}
               summaryMetricIds={summaryMetricIds}
+              dropTarget={dropTargetId === position.id}
             />
           ))}
         </div>

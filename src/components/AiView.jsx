@@ -18,14 +18,16 @@ export function AiView({
   onFetchSummary,
   onSaveSettings,
   onSettingsChange,
+  portfolios,
   portfolioName,
   portfolioId,
   summaryBusy,
   settingsBusy,
 }) {
   const telegramLinked = currentUser?.telegramLinked;
-  const canSchedule = Boolean(telegramLinked && portfolioId && hasInvestedPosition);
-  const canFetchSummary = Boolean(portfolioId && hasInvestedPosition && !aiSummary?.nextAvailableAt);
+  const selectedAiPortfolioId = aiSettings.portfolioId || portfolioId || "";
+  const canSchedule = Boolean(telegramLinked && selectedAiPortfolioId && hasInvestedPosition);
+  const canFetchSummary = Boolean(selectedAiPortfolioId && hasInvestedPosition && !aiSummary?.nextAvailableAt);
 
   return (
     <main className="ai-layout">
@@ -55,7 +57,16 @@ export function AiView({
         <div className="ai-settings-grid">
           <label className="auth-field ai-field">
             <span>Portfolio</span>
-            <input disabled type="text" value={portfolioName || "Select portfolio first"} />
+            <select
+              disabled={!portfolios?.length || settingsBusy}
+              onChange={(event) => onSettingsChange("portfolioId", event.target.value)}
+              value={selectedAiPortfolioId}
+            >
+              <option disabled value="">Select portfolio</option>
+              {(portfolios || []).map((portfolio) => (
+                <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+              ))}
+            </select>
           </label>
 
           <label className="auth-field ai-field ai-field-toggle">

@@ -27,12 +27,17 @@ export function pctMagnitude(value, digits = 1) {
   return `${Number(value || 0).toFixed(digits)}%`;
 }
 
+export function pctNegative(value, digits = 1) {
+  const n = Math.abs(Number(value || 0));
+  return `-${n.toFixed(digits)}%`;
+}
+
 export function sourceLabel(source) {
   switch ((source || "").toUpperCase()) {
     case "LIVE":
       return "Live";
     case "DELAYED":
-      return "Last close";
+      return "Close";
     case "MANUAL":
       return "Saved";
     default:

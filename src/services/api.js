@@ -78,7 +78,13 @@ export const api = {
   getEquityCurve: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/equity-history?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
   getPositions: (id) => request(`/api/portfolios/${id}/positions`),
   createPosition: (id, payload) => request(`/api/portfolios/${id}/positions`, {method: "POST", body: JSON.stringify(payload)}),
+  createPositionWithAdjustments: (id, payload, allocationAdjustments = []) =>
+    request(`/api/portfolios/${id}/positions/with-adjustments`, {
+      method: "POST",
+      body: JSON.stringify({position: payload, allocationAdjustments}),
+    }),
   updatePosition: (portfolioId, id, payload) => request(`/api/portfolios/${portfolioId}/positions/${id}`, {method: "PUT", body: JSON.stringify(payload)}),
+  reorderPositions: (portfolioId, orderedIds) => request(`/api/portfolios/${portfolioId}/positions/reorder`, {method: "PUT", body: JSON.stringify({orderedIds})}),
   deletePosition: (portfolioId, id) => request(`/api/portfolios/${portfolioId}/positions/${id}`, {method: "DELETE"}),
   getTransactions: (id) => request(`/api/portfolios/${id}/transactions`),
   createTransaction: (id, payload) => request(`/api/portfolios/${id}/transactions`, {method: "POST", body: JSON.stringify(payload)}),

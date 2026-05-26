@@ -5,7 +5,7 @@ export function EmptyState({onCreatePortfolio}) {
     <section className="empty-state">
       <p className="eyebrow">GET STARTED</p>
       <h2>No portfolios yet</h2>
-      <p>Create your first portfolio to start tracking positions, transactions, volatility, and AI-ready signals.</p>
+      <p>Create your first portfolio to start tracking positions, transactions, avg drawdown, and AI-ready signals.</p>
       <button className="action-button action-button-secondary" onClick={onCreatePortfolio} type="button">Create Portfolio</button>
     </section>
   );

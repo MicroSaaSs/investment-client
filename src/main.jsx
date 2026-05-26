@@ -33,6 +33,23 @@ function splitAllocationPayload(payload) {
   return {allocationAdjustments, positionPayload};
 }
 
+function uniqueLatestAllocationAdjustments(adjustments) {
+  const map = new Map();
+  for (const adjustment of adjustments || []) {
+    if (!adjustment?.id) continue;
+    map.set(adjustment.id, adjustment);
+  }
+  return [...map.values()];
+}
+
+function applyDisplayOrderToPositions(positions, orderedIds) {
+  const orderMap = new Map(orderedIds.map((id, index) => [id, index + 1]));
+  return (positions || []).map((position) => {
+    const nextOrder = orderMap.get(position.id);
+    return nextOrder ? {...position, displayOrder: nextOrder} : position;
+  });
+}
+
 function useScrollNavVisibility() {
   const [direction, setDirection] = useState("up");
   const [atTop, setAtTop] = useState(true);
@@ -106,6 +123,7 @@ function App() {
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryBusy, setAiSummaryBusy] = useState(false);
   const [aiSettingsBusy, setAiSettingsBusy] = useState(false);
+  const [aiPortfolioInvestedById, setAiPortfolioInvestedById] = useState({});
   const [tab, setTab] = useState("dashboard");
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null);
@@ -117,6 +135,12 @@ function App() {
   const isTelegramMiniApp = Boolean(telegramInitData);
   const {showTopBar, showBottomNav} = useScrollNavVisibility();
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === portfolioId) || null;
+  const selectedAiPortfolioId = aiSettings.portfolioId || portfolioId;
+  const selectedAiHasInvestedPosition = selectedAiPortfolioId
+    ? (selectedAiPortfolioId === portfolioId
+      ? Number(metrics?.invested || 0) > 0
+      : Boolean(aiPortfolioInvestedById[selectedAiPortfolioId]))
+    : false;
   const showLogout = !isTelegramMiniApp && Boolean(currentUser);
 
   useEffect(() => {
@@ -204,6 +228,31 @@ function App() {
     setAiSummary(null);
     refreshPortfolioViews(portfolioId).catch((e) => setError(String(e.message || e)));
   }, [portfolioId, equityRange, equityMode]);
+
+  useEffect(() => {
+    const targetPortfolioId = aiSettings.portfolioId;
+    if (!targetPortfolioId || targetPortfolioId === portfolioId) return;
+    if (Object.prototype.hasOwnProperty.call(aiPortfolioInvestedById, targetPortfolioId)) return;
+    let cancelled = false;
+    api.getWorkspace(targetPortfolioId, "month", "daily")
+      .then((workspace) => {
+        if (cancelled) return;
+        setAiPortfolioInvestedById((current) => ({
+          ...current,
+          [targetPortfolioId]: Number(workspace?.metrics?.invested || 0) > 0,
+        }));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAiPortfolioInvestedById((current) => ({
+          ...current,
+          [targetPortfolioId]: false,
+        }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [aiSettings.portfolioId, portfolioId, aiPortfolioInvestedById]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -398,19 +447,14 @@ function App() {
     if (!portfolioId) return;
     setError("");
     const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
-    await api.createPosition(portfolioId, positionPayload);
-    if (allocationAdjustments.length) {
-      await Promise.all(
-        allocationAdjustments.map((adjustment) => {
-          const targetPosition = rawPositions.find((item) => item.id === adjustment.id);
-          if (!targetPosition) return Promise.resolve();
-          return api.updatePosition(portfolioId, adjustment.id, {
-            ...targetPosition,
-            targetAllocationPct: adjustment.targetAllocationPct,
-          });
-        })
-      );
-    }
+    const normalizedAdjustments = uniqueLatestAllocationAdjustments(allocationAdjustments)
+      .filter((adjustment) => {
+        const targetPosition = rawPositions.find((item) => item.id === adjustment.id);
+        if (!targetPosition) return false;
+        const currentTarget = Number(targetPosition.targetAllocationPct ?? targetPosition.target ?? 0);
+        return Math.abs(currentTarget - Number(adjustment.targetAllocationPct || 0)) >= 0.0001;
+      });
+    await api.createPositionWithAdjustments(portfolioId, positionPayload, normalizedAdjustments);
     await refreshPortfolioViews(portfolioId);
     setModal(null);
   }
@@ -440,6 +484,7 @@ function App() {
       portfolioId: "",
     });
     setAiSummary(null);
+    setAiPortfolioInvestedById({});
     setRawPositions([]);
     setTransactions([]);
     setError("");
@@ -451,7 +496,8 @@ function App() {
   }
 
   async function saveAiSettings() {
-    if (!portfolioId) return;
+    const targetPortfolioId = aiSettings.portfolioId || portfolioId;
+    if (!targetPortfolioId) return;
     setError("");
     setAiSettingsBusy(true);
     try {
@@ -461,7 +507,7 @@ function App() {
         weekday: aiSettings.weekday,
         monthDay: aiSettings.monthDay,
         time: aiSettings.time,
-        portfolioId,
+        portfolioId: targetPortfolioId,
         portfolioPositionSummaryMetricIds: portfolioPositionSummaryMetrics,
         holdingsPositionSummaryMetricIds: holdingsPositionSummaryMetrics,
       });
@@ -484,6 +530,12 @@ function App() {
 
   async function updatePositionSummaryMetrics(kind, nextMetricIds) {
     const normalized = normalizePositionSummaryMetricIds(nextMetricIds);
+    const currentNormalized = kind === "portfolio"
+      ? normalizePositionSummaryMetricIds(portfolioPositionSummaryMetrics)
+      : normalizePositionSummaryMetricIds(holdingsPositionSummaryMetrics);
+    if (normalized.length === currentNormalized.length && normalized.every((id, index) => id === currentNormalized[index])) {
+      return;
+    }
     setError("");
     if (kind === "portfolio") setPortfolioPositionSummaryMetrics(normalized);
     else setHoldingsPositionSummaryMetrics(normalized);
@@ -513,19 +565,43 @@ function App() {
     }
   }
 
+  async function reorderPositions(orderIds) {
+    if (!portfolioId || !Array.isArray(orderIds) || !orderIds.length) return;
+    const active = rawPositions.filter((position) => (position.mode || "ACTIVE") !== "WATCHLIST");
+    const byId = new Map(active.map((position) => [position.id, position]));
+    const uniqueIds = [...new Set(orderIds)].filter((id) => byId.has(id));
+    const missingIds = active.map((position) => position.id).filter((id) => !uniqueIds.includes(id));
+    const finalOrderIds = [...uniqueIds, ...missingIds];
+    const currentOrderIds = active
+      .slice()
+      .sort((left, right) => Number(left.displayOrder || Number.MAX_SAFE_INTEGER) - Number(right.displayOrder || Number.MAX_SAFE_INTEGER))
+      .map((position) => position.id);
+    if (finalOrderIds.length === currentOrderIds.length && finalOrderIds.every((id, index) => id === currentOrderIds[index])) {
+      return;
+    }
+    await api.reorderPositions(portfolioId, finalOrderIds);
+    setRawPositions((current) => applyDisplayOrderToPositions(current, finalOrderIds));
+    setMetrics((current) => current ? {
+      ...current,
+      positions: applyDisplayOrderToPositions(current.positions, finalOrderIds),
+    } : current);
+  }
+
   async function fetchAiSummary() {
-    if (!portfolioId) return;
+    const targetPortfolioId = aiSettings.portfolioId || portfolioId;
+    if (!targetPortfolioId) return;
     setError("");
     setAiSummaryBusy(true);
     try {
-      const response = await api.getAiSummary(portfolioId);
+      const response = await api.getAiSummary(targetPortfolioId);
       setAiSummary(response);
     } catch (e) {
+      const targetPortfolioName = portfolios.find((portfolio) => portfolio.id === targetPortfolioId)?.name || selectedPortfolio?.name || "";
       if (String(e.message || e).includes("once per day")) {
         setAiSummary((current) => ({
           ...current,
-          portfolioId,
-          portfolioName: selectedPortfolio?.name || current?.portfolioName || "",
+          portfolioId: targetPortfolioId,
+          portfolioName: targetPortfolioName || current?.portfolioName || "",
           nextAvailableAt: "locked",
           text: current?.text || "",
         }));
@@ -616,6 +692,7 @@ function App() {
             metrics={metrics}
             mobilePositionSummaryMetrics={portfolioPositionSummaryMetrics}
             onMobilePositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
+            onReorderPositions={reorderPositions}
             portfolioId={portfolioId}
             portfolios={portfolios}
             onAddTransaction={(position) => setModal({
@@ -664,6 +741,7 @@ function App() {
             }}
             onEditTransaction={(transaction) => setModal({type: "edit-transaction", data: transaction})}
             onMobilePositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("holdings", nextMetricIds)}
+            onReorderPositions={reorderPositions}
             positions={activePositions}
             transactions={transactions}
           />
@@ -684,7 +762,8 @@ function App() {
             onFetchSummary={fetchAiSummary}
             onSaveSettings={saveAiSettings}
             onSettingsChange={updateAiSetting}
-            hasInvestedPosition={(metrics?.invested || 0) > 0}
+            hasInvestedPosition={selectedAiHasInvestedPosition}
+            portfolios={portfolios}
             portfolioId={portfolioId}
             portfolioName={selectedPortfolio?.name || ""}
             settingsBusy={aiSettingsBusy}
@@ -695,7 +774,7 @@ function App() {
 
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={() => setModal(null)} onSubmit={handleCreatePortfolio} /> : null}
       {modal === "switch-portfolio" ? (
-        <ModalSheet title="Switch portfolio" subtitle="Choose the portfolio to display across dashboard, positions, watch list, and volatility." onClose={() => setModal(null)}>
+        <ModalSheet title="Switch portfolio" subtitle="Choose the portfolio to display across dashboard, positions, watch list, and avg drawdown." onClose={() => setModal(null)}>
           <div className="portfolio-switch-list">
             {portfolios.map((portfolio) => (
               <button
@@ -766,11 +845,16 @@ function App() {
       {modal?.type === "edit-position" ? <PositionModal mode="edit" onClose={() => setModal(null)} onSubmit={async (payload) => {
         const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
         await api.updatePosition(portfolioId, positionPayload.id, positionPayload);
-        if (allocationAdjustments.length) {
+        const normalizedAdjustments = uniqueLatestAllocationAdjustments(allocationAdjustments);
+        if (normalizedAdjustments.length) {
           await Promise.all(
-            allocationAdjustments.map((adjustment) => {
+            normalizedAdjustments.map((adjustment) => {
               const targetPosition = rawPositions.find((item) => item.id === adjustment.id);
               if (!targetPosition) return Promise.resolve();
+              const currentTarget = Number(targetPosition.targetAllocationPct ?? targetPosition.target ?? 0);
+              if (Math.abs(currentTarget - Number(adjustment.targetAllocationPct || 0)) < 0.0001) {
+                return Promise.resolve();
+              }
               return api.updatePosition(portfolioId, adjustment.id, {
                 ...targetPosition,
                 targetAllocationPct: adjustment.targetAllocationPct,

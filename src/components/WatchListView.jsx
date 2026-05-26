@@ -1,5 +1,5 @@
 import React from "react";
-import { money, pct, pctMagnitude, sourceLabel } from "../utils/format";
+import { money, pct, pctNegative, sourceLabel } from "../utils/format";
 import { TrashIcon } from "./icons/TrashIcon";
 
 const DEFAULT_WATCH_SETTINGS = {
@@ -19,9 +19,9 @@ function SourceBadge({ source }) {
 
 export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
   const watchSettings = DEFAULT_WATCH_SETTINGS;
-  const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Volatility window ${watchSettings.volatilityWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
-  const sorted = [...positions].sort((left, right) => right.volatility - left.volatility);
-  const highestVolatility = sorted[0] || null;
+  const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Avg drawdown window ${watchSettings.volatilityWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
+  const sorted = [...positions].sort((left, right) => left.avgDrawdown - right.avgDrawdown);
+  const highestAvgDrawdown = sorted[0] || null;
   const deepestDrawdown = [...positions].sort((left, right) => left.dd - right.dd)[0] || null;
 
   if (!positions.length) {
@@ -31,7 +31,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           <div>
             <p className="eyebrow">WATCH LIST</p>
             <h2>Potential holdings to monitor</h2>
-            <p className="panel-copy">Add tickers you are researching and keep an eye on price, peak pressure, and volatility before they become active positions. {settingsLine}</p>
+            <p className="panel-copy">Add tickers you are researching and keep an eye on price, peak pressure, and avg drawdown before they become active positions. {settingsLine}</p>
           </div>
           <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
         </div>
@@ -39,7 +39,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           <div className="watchlist-empty-card">
             <p className="modal-kicker">READY FOR RESEARCH</p>
             <h3>No watch items yet</h3>
-            <p>Start with the names you are considering next. Each watch item keeps the market snapshot simple: price, peak, drawdown, and historical volatility. {settingsLine}</p>
+            <p>Start with the names you are considering next. Each watch item keeps the market snapshot simple: price, peak, drawdown, and average drawdown. {settingsLine}</p>
             <button className="action-button action-button-secondary" onClick={onCreateWatch} type="button">Create first watch item</button>
           </div>
         </div>
@@ -53,7 +53,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
         <div>
           <p className="eyebrow">WATCH LIST</p>
           <h2>Potential holdings to monitor</h2>
-          <p className="panel-copy">Track price, peak pressure, and historical volatility before a position joins the portfolio. {settingsLine}</p>
+          <p className="panel-copy">Track price, peak pressure, and average drawdown before a position joins the portfolio. {settingsLine}</p>
         </div>
         <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
       </div>
@@ -64,9 +64,9 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           <small>Research names on this list</small>
         </article>
         <article className="watchlist-summary-card">
-          <span>Highest volatility</span>
-          <strong>{highestVolatility ? `${highestVolatility.ticker}: ${pctMagnitude(highestVolatility.volatility)}` : "—"}</strong>
-          <small>{highestVolatility ? companyLabel(highestVolatility) : "No data yet"}</small>
+          <span>Highest avg drawdown</span>
+          <strong>{highestAvgDrawdown ? `${highestAvgDrawdown.ticker}: ${pctNegative(highestAvgDrawdown.avgDrawdown)}` : "—"}</strong>
+          <small>{highestAvgDrawdown ? companyLabel(highestAvgDrawdown) : "No data yet"}</small>
         </article>
         <article className="watchlist-summary-card">
           <span>Deepest drawdown</span>
@@ -83,7 +83,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
               <th className="table-center">Price</th>
               <th className="table-center">Peak Price</th>
               <th className="table-center">Drawdown</th>
-              <th className="table-center">Volatility</th>
+              <th className="table-center">Avg Drawdown</th>
               <th className="table-center">Actions</th>
             </tr>
           </thead>
@@ -100,7 +100,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 </td>
                 <td className="table-center">{money(position.peak, 2)}</td>
                 <td className="table-center">{pct(position.dd)}</td>
-                <td className="table-center">{pctMagnitude(position.volatility)}</td>
+                <td className="table-center">{pctNegative(position.avgDrawdown)}</td>
                 <td className="table-center">
                   <div className="row-actions row-actions-center">
                     <button className="mini-button mini-button-danger" onClick={() => onDeleteWatch(position)} type="button">Delete</button>
@@ -139,7 +139,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
               </div>
               <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
               <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
-              <div><span>Volatility</span><strong>{pctMagnitude(position.volatility)}</strong></div>
+              <div><span>Avg Drawdown</span><strong>{pctNegative(position.avgDrawdown)}</strong></div>
             </div>
           </article>
         ))}

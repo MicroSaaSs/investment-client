@@ -5,7 +5,7 @@ const TABS = [
   {id: "dashboard", label: "DASHBOARD", short: "Home", icon: "📊"},
   {id: "positions", label: "HOLDINGS", short: "Holdings", icon: "💼"},
   {id: "watchlist", label: "WATCH LIST", short: "Watch", icon: "👀"},
-  {id: "volatility", label: "VOLATILITY", short: "Risk", icon: "📉"},
+  {id: "volatility", label: "AVRG DRAWDOWN", short: "Risk", icon: "📉"},
   {id: "ai", label: "AI", short: "AI", icon: "🤖"},
 ];
 
