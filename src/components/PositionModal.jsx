@@ -131,7 +131,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
     };
   }, [activePosition?.id, allocationTargets, form.includeInAllocation, form.targetAllocationPct, positions]);
 
-  const volatilityValidation = useMemo(() => {
+  const avgDrawdownValidation = useMemo(() => {
     const period = toNumber(form.avgDrawdownPeriod, 0);
     const interval = toNumber(form.avgDrawdownInterval, 0);
     if (period <= 0 || interval <= 0) {
@@ -182,7 +182,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!form.ticker.trim() || (!isWatchlist && !allocation.valid) || !volatilityValidation.valid) return;
+    if (!form.ticker.trim() || (!isWatchlist && !allocation.valid) || !avgDrawdownValidation.valid) return;
     onSubmit({
       id: editorMode === "edit" ? activePosition?.id : position?.id,
       ticker: form.ticker.trim().toUpperCase(),
@@ -363,14 +363,14 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
             Save is disabled until all included target allocations sum to exactly 100%.
           </div>
         ) : null}
-        {!volatilityValidation.valid ? (
+        {!avgDrawdownValidation.valid ? (
           <div className="validation-banner modal-actions-wide">
-            {volatilityValidation.message}
+            {avgDrawdownValidation.message}
           </div>
         ) : null}
         <div className="modal-actions modal-actions-wide">
           <button className="ghost" onClick={onClose} type="button">Cancel</button>
-          <button className="primary" disabled={(!isWatchlist && !allocation.valid) || !volatilityValidation.valid} type="submit">{isWatchlist ? "Save watch item" : editorMode === "edit" ? "Save changes" : "Save position"}</button>
+          <button className="primary" disabled={(!isWatchlist && !allocation.valid) || !avgDrawdownValidation.valid} type="submit">{isWatchlist ? "Save watch item" : editorMode === "edit" ? "Save changes" : "Save position"}</button>
         </div>
       </form>
     </ModalSheet>

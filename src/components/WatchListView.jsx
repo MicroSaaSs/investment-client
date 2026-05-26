@@ -4,7 +4,7 @@ import { TrashIcon } from "./icons/TrashIcon";
 
 const DEFAULT_WATCH_SETTINGS = {
   peakWindowMonths: 5,
-  volatilityWindowMonths: 36,
+  avgDrawdownWindowMonths: 36,
   stepSizeMonths: 4,
 };
 
@@ -19,7 +19,7 @@ function SourceBadge({ source }) {
 
 export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
   const watchSettings = DEFAULT_WATCH_SETTINGS;
-  const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Avg drawdown window ${watchSettings.volatilityWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
+  const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Avg drawdown window ${watchSettings.avgDrawdownWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
   const sorted = [...positions].sort((left, right) => left.avgDrawdown - right.avgDrawdown);
   const highestAvgDrawdown = sorted[0] || null;
   const deepestDrawdown = [...positions].sort((left, right) => left.dd - right.dd)[0] || null;

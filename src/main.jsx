@@ -9,7 +9,7 @@ import {TabNav} from "./components/TabNav";
 import {DashboardView} from "./components/DashboardView";
 import {PositionsView} from "./components/PositionsView";
 import {WatchListView} from "./components/WatchListView";
-import {VolatilityView} from "./components/VolatilityView";
+import {AvgDrawdownView} from "./components/AvgDrawdownView";
 import {AiView} from "./components/AiView";
 import {EmptyState} from "./components/EmptyState";
 import {PortfolioModal} from "./components/PortfolioModal";
@@ -463,6 +463,9 @@ function App() {
     if (!portfolioId) return;
     setError("");
     await api.createTransaction(portfolioId, payload);
+    if (payload.cashTransfer) {
+      await api.createTransaction(portfolioId, payload.cashTransfer);
+    }
     await refreshPortfolioViews(portfolioId);
     setModal(null);
   }
@@ -616,7 +619,7 @@ function App() {
   const activePositions = positions.filter((position) => position.mode !== "WATCHLIST");
   const watchlistPositions = positions.filter((position) => position.mode === "WATCHLIST");
   const activeRawPositions = rawPositions.filter((position) => (position.mode || "ACTIVE") !== "WATCHLIST");
-  const volatilityPositions = activePositions.filter((position) => position.type !== "CASH" && position.type !== "CASH_ETF");
+  const avgDrawdownPositions = activePositions.filter((position) => position.type !== "CASH" && position.type !== "CASH_ETF");
   const dataBusy = portfoliosBusy || workspaceBusy;
 
   if (!isAuthenticated) {
@@ -753,7 +756,7 @@ function App() {
             positions={watchlistPositions}
           />
         ) : null}
-        {portfolios.length && tab === "volatility" ? <VolatilityView volatility={volatilityPositions} /> : null}
+        {portfolios.length && tab === "avg-drawdown" ? <AvgDrawdownView avgDrawdown={avgDrawdownPositions} /> : null}
         {portfolios.length && tab === "ai" ? (
           <AiView
             aiSettings={aiSettings}

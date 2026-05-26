@@ -9,14 +9,29 @@ React + Vite investment client for both:
 
 - `Portfolios`: manage portfolios, preview positions, and review overview cards
 - `Holdings`: full position table on desktop and compact expandable cards on mobile
-- `Watch List`: watchlist entries with peak / volatility defaults shown in the description
-- `Risk`: risk settings, targets, and volatility controls
+- `Watch List`: watchlist entries with peak / avg drawdown defaults shown in the description
+- `Risk`: peak + avg drawdown analytics by ticker
+- `AI`: Telegram schedule + manual AI summary preview with explicit portfolio selector
 
 The client has separate responsive behavior for desktop and mobile, including:
 
 - mobile top action bar + bottom tab nav
 - portfolio preview cards and position detail modals
 - compact transaction cards on mobile
+
+## Recent product behavior
+
+- position order is manual and persistent (`displayOrder`) across:
+  - portfolio position list
+  - holdings table/cards
+  - mobile cards
+- holdings desktop has column visibility control and manual order controls
+- summary metrics picker is shared UX across desktop/mobile with apply flow
+- allocation charts use custom external labels with responsive clipping guards
+- cash transaction flow supports optional paired buffer transaction:
+  - buy from selected CASH bucket
+  - sell proceeds to selected CASH bucket
+- cash bucket positions are shown as non-model members (allocation target/drift not applicable)
 
 ## Environment
 

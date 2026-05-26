@@ -2,8 +2,8 @@ import React from "react";
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {money, pct, pctNegative} from "../utils/format";
 
-export function VolatilityView({volatility}) {
-  const sorted = [...volatility]
+export function AvgDrawdownView({avgDrawdown}) {
+  const sorted = [...avgDrawdown]
     .map((position) => ({ ...position, avgDrawdown: -Math.abs(Number(position.avgDrawdown || 0)) }))
     .sort((left, right) => left.avgDrawdown - right.avgDrawdown);
 

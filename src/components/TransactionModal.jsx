@@ -4,6 +4,7 @@ import {ModalSheet} from "./ModalSheet";
 function buildForm(transaction, positions, today) {
   const isCashTxn = (transaction?.ticker || positions[0]?.ticker || "").toUpperCase() === "CASH";
   const cashAmount = transaction ? Number(transaction.shares || 0) * Number(transaction.price || 0) : "";
+  const cashBuckets = positions.filter((position) => position.type === "CASH");
   if (!transaction) {
     return {
       ticker: positions[0]?.ticker || "",
@@ -12,6 +13,8 @@ function buildForm(transaction, positions, today) {
       amount: "",
       date: today,
       type: "BUY",
+      useCashTransfer: false,
+      cashBucketId: cashBuckets[0]?.id || "",
     };
   }
   return {
@@ -21,6 +24,8 @@ function buildForm(transaction, positions, today) {
     amount: isCashTxn ? String(cashAmount || "") : "",
     date: transaction.date || today,
     type: transaction.type || "BUY",
+    useCashTransfer: false,
+    cashBucketId: cashBuckets[0]?.id || "",
   };
 }
 
@@ -29,6 +34,8 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
   const [form, setForm] = useState(buildForm(transaction, positions, today));
   const selectedPosition = positions.find((position) => position.ticker === form.ticker);
   const isCashPosition = selectedPosition?.type === "CASH" || selectedPosition?.type === "CASH_ETF";
+  const cashBuckets = positions.filter((position) => position.type === "CASH");
+  const canUseCashTransfer = mode === "create" && !isCashPosition && cashBuckets.length > 0;
 
   function update(key, value) {
     setForm((current) => ({...current, [key]: value}));
@@ -39,6 +46,8 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
     if (!form.ticker.trim()) return;
     const shares = isCashPosition ? Number(form.amount || 0) : Number(form.shares || 0);
     const price = isCashPosition ? 1 : Number(form.price || 0);
+    const notional = Number(shares || 0) * Number(price || 0);
+    const selectedCashBucket = cashBuckets.find((position) => position.id === form.cashBucketId) || null;
     onSubmit({
       id: transaction?.id,
       ticker: form.ticker.trim().toUpperCase(),
@@ -48,6 +57,15 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
       price,
       fees: 0,
       currency: "USD",
+      cashTransfer: canUseCashTransfer && form.useCashTransfer && selectedCashBucket && notional > 0 ? {
+        ticker: selectedCashBucket.ticker,
+        type: form.type === "BUY" ? "SELL" : "BUY",
+        date: form.date,
+        shares: notional,
+        price: 1,
+        fees: 0,
+        currency: "USD",
+      } : null,
     });
   }
 
@@ -86,6 +104,27 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
               <span>Price</span>
               <input inputMode="decimal" value={form.price} onChange={(e) => update("price", e.target.value)} />
             </label>
+            {canUseCashTransfer ? (
+              <>
+                <label>
+                  <span>Cash handling</span>
+                  <select value={form.useCashTransfer ? "BUFFER" : "DIRECT"} onChange={(e) => update("useCashTransfer", e.target.value === "BUFFER")}>
+                    <option value="DIRECT">Direct trade only</option>
+                    <option value="BUFFER">{form.type === "BUY" ? "Buy from CASH bucket" : "Sell to CASH bucket"}</option>
+                  </select>
+                </label>
+                {form.useCashTransfer ? (
+                  <label>
+                    <span>{form.type === "BUY" ? "Fund from CASH bucket" : "Transfer proceeds to CASH bucket"}</span>
+                    <select value={form.cashBucketId} onChange={(e) => update("cashBucketId", e.target.value)}>
+                      {cashBuckets.map((position) => (
+                        <option key={position.id} value={position.id}>{position.ticker} · {(position.company || "Uninvested cash")}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </>
+            ) : null}
           </>
         )}
         <label>
