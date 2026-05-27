@@ -2453,6 +2453,16 @@ tbody td > small {
   font-size: 11px;
   line-height: 1.25;
 }
+.modal-field-note {
+  margin-top: 2px;
+}
+.modal-field-note small {
+  display: block;
+  max-width: none;
+  color: #637392;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .modal-type-field {
   align-content: start;
 }

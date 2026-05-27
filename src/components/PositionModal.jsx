@@ -14,6 +14,27 @@ const DEFAULT_FORM = {
   avgDrawdownInterval: "4",
 };
 
+const CASH_TICKER_DEFAULT = "CASH-USD";
+const CASH_COMPANY_DEFAULT = "Uninvested cash";
+const CASH_ETF_TICKER_DEFAULT = "SHV";
+const CASH_ETF_COMPANY_DEFAULT = "Cash / Treasury ETF";
+
+function isCashEquivalent(type) {
+  return type === "CASH" || type === "CASH_ETF";
+}
+
+function isTypeDefaultValue(type, ticker, company) {
+  const normalizedTicker = (ticker || "").trim().toUpperCase();
+  const normalizedCompany = (company || "").trim();
+  if (type === "CASH") {
+    return normalizedTicker === CASH_TICKER_DEFAULT && normalizedCompany === CASH_COMPANY_DEFAULT;
+  }
+  if (type === "CASH_ETF") {
+    return normalizedTicker === CASH_ETF_TICKER_DEFAULT && normalizedCompany === CASH_ETF_COMPANY_DEFAULT;
+  }
+  return false;
+}
+
 function buildForm(position) {
   if (!position) return DEFAULT_FORM;
   return {
@@ -168,13 +189,23 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
     setForm((current) => {
       const next = {...current, type: value};
       if (value === "CASH") {
-        if (!next.ticker.trim()) next.ticker = "CASH-USD";
-        if (!next.company.trim()) next.company = "Uninvested cash";
+        next.ticker = CASH_TICKER_DEFAULT;
+        next.company = CASH_COMPANY_DEFAULT;
         next.includeInAllocation = false;
       } else if (value === "CASH_ETF") {
-        if (!next.ticker.trim()) next.ticker = "SHV";
-        if (!next.company.trim()) next.company = "Cash / Treasury ETF";
+        next.ticker = CASH_ETF_TICKER_DEFAULT;
+        next.company = CASH_ETF_COMPANY_DEFAULT;
         next.includeInAllocation = false;
+      } else if (value === "CRYPTO") {
+        if (isTypeDefaultValue(current.type, current.ticker, current.company)) {
+          next.ticker = "";
+          next.company = "";
+        }
+        if (!isCashEquivalent(current.type)) next.includeInAllocation = current.includeInAllocation;
+        else next.includeInAllocation = true;
+      } else if (value === "STOCK" && isTypeDefaultValue(current.type, current.ticker, current.company)) {
+        next.ticker = "";
+        next.company = "";
       }
       return next;
     });
@@ -206,7 +237,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
   }
 
   return (
-    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and avg drawdown before it joins the portfolio." : "Cash ETF uses real market pricing. Cash bucket is uninvested cash fixed at $1."} onClose={onClose}>
+    <ModalSheet title={isWatchlist ? "Watch list item" : "Add/Edit Position"} subtitle={isWatchlist ? "Add a ticker to monitor its price, peak pressure, and avg drawdown before it joins the portfolio." : "Stocks use your existing providers, crypto uses Binance, cash ETF uses market pricing, and cash bucket stays fixed at $1."} onClose={onClose}>
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
         {!isWatchlist ? (
           <div className="editor-mode-toggle modal-actions-wide">
@@ -242,21 +273,24 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
           <div className="modal-grid modal-grid-identity">
             <label>
               <span>Ticker</span>
-              <input autoFocus disabled={editorMode === "edit"} placeholder="NVDA" value={form.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase())} />
+              <input autoFocus disabled={editorMode === "edit"} placeholder={form.type === "CRYPTO" ? "BTC" : "NVDA"} value={form.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase())} />
             </label>
             <label>
               <span>Company</span>
-              <input placeholder="Company Name" value={form.company} onChange={(e) => update("company", e.target.value)} />
+              <input placeholder={form.type === "CRYPTO" ? "Bitcoin" : "Company Name"} value={form.company} onChange={(e) => update("company", e.target.value)} />
             </label>
             <label className="modal-type-field">
               <span>Type</span>
               <select value={form.type} onChange={(e) => handleTypeChange(e.target.value)}>
                 <option value="STOCK">Stock</option>
+                <option value="CRYPTO">Crypto</option>
                 <option value="CASH_ETF">Cash ETF</option>
                 <option value="CASH">Cash bucket</option>
               </select>
-              <small>{form.type === "CASH_ETF" ? "Ticker-based cash sleeve with live or delayed market price." : form.type === "CASH" ? "Manual uninvested cash bucket priced at $1." : "Standard market-priced holding."}</small>
             </label>
+            <div className="modal-grid-full modal-field-note">
+              <small>{form.type === "CRYPTO" ? "Use simple symbols like BTC, ETH, or TON. Bare crypto tickers default to USD via Binance USDT pairs; BTC/USD, ETH/USDT, and BTCUSDT also work." : form.type === "CASH_ETF" ? "Ticker-based cash sleeve with live or delayed market price." : form.type === "CASH" ? "Manual uninvested cash bucket priced at $1." : "Standard market-priced holding."}</small>
+            </div>
           </div>
         </div>
 
@@ -324,9 +358,9 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
         {!isWatchlist ? <label className="checkbox-row modal-actions-wide">
           <span>
             <b>Include in allocation</b>
-            <small>{form.type === "STOCK" ? "Included positions must sum to exactly 100%." : "Cash positions stay outside the target model by default."}</small>
+            <small>{isCashEquivalent(form.type) ? "Cash positions stay outside the target model by default." : "Included positions must sum to exactly 100%."}</small>
           </span>
-          <input checked={form.includeInAllocation} disabled={form.type !== "STOCK"} onChange={(e) => update("includeInAllocation", e.target.checked)} type="checkbox" />
+          <input checked={form.includeInAllocation} disabled={isCashEquivalent(form.type)} onChange={(e) => update("includeInAllocation", e.target.checked)} type="checkbox" />
         </label> : null}
         {!isWatchlist ? <div className="allocation-card modal-actions-wide">
           <div className="allocation-card-top">
