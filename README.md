@@ -12,6 +12,11 @@ React + Vite investment client for both:
 - `Watch List`: watchlist entries with peak / avg drawdown defaults shown in the description
 - `Risk`: peak + avg drawdown analytics by ticker
 - `AI`: Telegram schedule + manual AI summary preview with explicit portfolio selector
+- position editor supports:
+  - `STOCK`
+  - `CRYPTO`
+  - `CASH_ETF`
+  - `CASH`
 
 The client has separate responsive behavior for desktop and mobile, including:
 
@@ -32,6 +37,10 @@ The client has separate responsive behavior for desktop and mobile, including:
   - buy from selected CASH bucket
   - sell proceeds to selected CASH bucket
 - cash bucket positions are shown as non-model members (allocation target/drift not applicable)
+- crypto positions use simple tickers in the form UX:
+  - `BTC`, `ETH`, `TON`
+  - backend resolves bare crypto tickers to Binance `USDT` pairs by default
+- cash and cash-ETF defaults are applied when switching types, and cleared again when switching back to stock/crypto
 
 ## Environment
 
@@ -44,7 +53,7 @@ Tracked template:
 For local development:
 
 ```bash
-cp .env.example .env.development.local
+cp .env.example .env.development
 ```
 
 Important variables:
