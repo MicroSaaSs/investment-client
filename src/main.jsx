@@ -109,7 +109,7 @@ function App() {
   const [rawPositions, setRawPositions] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
-  const [equity, setEquity] = useState([]);
+  const [equityHistory, setEquityHistory] = useState(null);
   const [equityRange, setEquityRange] = useState("month");
   const [equityMode, setEquityMode] = useState("daily");
   const [aiSettings, setAiSettings] = useState({
@@ -294,7 +294,7 @@ function App() {
       const workspace = await api.getWorkspace(id, equityRange, equityMode);
       startTransition(() => {
         setMetrics(workspace.metrics || null);
-        setEquity(workspace.equityHistory?.points || []);
+        setEquityHistory(workspace.equityHistory || null);
         setRawPositions(workspace.positions || []);
         setTransactions(workspace.transactions || []);
       });
@@ -718,7 +718,7 @@ function App() {
         ) : null}
         {portfolios.length && tab === "dashboard" ? (
           <DashboardView
-            equity={equity}
+            equityHistory={equityHistory}
             equityMode={equityMode}
             equityRange={equityRange}
             metrics={metrics}

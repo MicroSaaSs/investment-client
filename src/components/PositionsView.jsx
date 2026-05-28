@@ -39,6 +39,17 @@ function AllocationBlock({ position }) {
 }
 
 function transactionSummary(transaction) {
+  const type = String(transaction.type || "").trim().toUpperCase();
+  const amount = Number(transaction.shares || 0) > 0 && Number(transaction.price || 0) > 0
+    ? Number(transaction.shares || 0) * Number(transaction.price || 0)
+    : Number(transaction.shares || 0) || Number(transaction.price || 0) || 0;
+  if (["DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"].includes(type)) {
+    const parts = [
+      transaction.date,
+      money(amount, 0),
+    ];
+    return parts.join(" · ");
+  }
   const parts = [
     transaction.date,
     money(transaction.price, 0),
@@ -47,6 +58,16 @@ function transactionSummary(transaction) {
     parts.push(`${money(transaction.fees, 0)} fees`);
   }
   return parts.join(" · ");
+}
+
+function transactionTypeLabel(transaction) {
+  const type = String(transaction.type || "").trim().toUpperCase();
+  return ({
+    DEPOSIT: "Deposit",
+    WITHDRAWAL: "Withdrawal",
+    DIVIDEND: "Dividend",
+    FEE: "Fee",
+  })[type] || type;
 }
 
 function TriggerBlock({ position }) {
@@ -501,7 +522,7 @@ export function PositionsView({
                 <tr key={transaction.id}>
                   <td><strong>{transaction.date}</strong></td>
                   <td>{transaction.ticker}</td>
-                  <td>{transaction.type}</td>
+                  <td>{transactionTypeLabel(transaction)}</td>
                   <td className="table-center">{Number(transaction.shares || 0).toLocaleString()}</td>
                   <td className="table-center">{money(transaction.price, 2)}</td>
                   <td className="table-center">{money(transaction.fees, 2)}</td>
@@ -523,7 +544,7 @@ export function PositionsView({
                 <div>
                   <strong>{transaction.ticker}</strong>
                 </div>
-                <span className="signal-pill signal-hold">{transaction.type}</span>
+                <span className="signal-pill signal-hold">{transactionTypeLabel(transaction)}</span>
               </div>
               <div className="mobile-card-transaction-row">
                 <div className="mobile-card-transaction-summary">

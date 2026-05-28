@@ -1,5 +1,5 @@
 import React from "react";
-import {Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
+import {Area, AreaChart, CartesianGrid, Cell, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {compactMoney, money, pct} from "../utils/format";
 import {MetricDetailsModal} from "./MetricDetailsModal";
 
@@ -105,18 +105,31 @@ function MetricCard({label, value, detail, tone = "default", onClick}) {
 
 function EquityTooltip({active, label, payload}) {
   if (!active || !payload?.length) return null;
-  const value = Number(payload[0].value || 0);
+  const point = payload[0]?.payload || {};
+  const value = Number(point.value || 0);
+  const invested = Number(point.invested || 0);
+  const cash = Number(point.cash || 0);
+  const marketValue = Number(point.marketValue || 0);
+  const pnl = Number((point.totalPnl ?? (value - invested)) || 0);
+  const pnlPct = invested > 0 ? pnl / invested : 0;
   return (
     <div className="chart-tooltip">
       <strong>{label}</strong>
-      <span>value : {money(value)}</span>
+      <span>Capital: {money(value)}</span>
+      <span>Invested: {money(invested)}</span>
+      <span>Cash: {money(cash)}</span>
+      <span>Market value: {money(marketValue)}</span>
+      <span>PnL: {money(pnl)} / {pct(pnlPct * 100)}</span>
     </div>
   );
 }
 
-export function DashboardView({metrics, equity, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
+export function DashboardView({metrics, equityHistory, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
   const [detailModal, setDetailModal] = React.useState(null);
   if (!metrics) return null;
+  const equityPoints = equityHistory?.points || [];
+  const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
+  const pnlStroke = latestPnl < 0 ? "#c3504c" : "#2f9961";
   const detailPositions = (metrics.positions || []).filter((position) => position.mode !== "WATCHLIST");
   const activePositions = detailPositions.filter((position) => position.includeInAllocation);
   const boughtAllocation = activePositions.filter((position) => position.invested > 0).map((position) => ({
@@ -141,7 +154,21 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
         <div className="panel-heading">
           <div>
             <h2>Capital Curve</h2>
-            <p className="panel-copy">Invested baseline + current capitalization history</p>
+            <p className="panel-copy">Daily portfolio capital rebuilt from transactions and market prices.</p>
+            <div className="chart-legend" aria-label="Capital curve legend">
+              <span className="chart-legend-item">
+                <i className="chart-legend-swatch chart-legend-swatch-value" />
+                Capital
+              </span>
+              <span className="chart-legend-item">
+                <i className="chart-legend-swatch chart-legend-swatch-invested" />
+                Invested
+              </span>
+              <span className="chart-legend-item">
+                <i className={`chart-legend-swatch ${latestPnl < 0 ? "chart-legend-swatch-pnl-down" : "chart-legend-swatch-pnl-up"}`} />
+                PnL
+              </span>
+            </div>
           </div>
           <div className="chart-controls">
             <select onChange={(event) => onEquityRangeChange(event.target.value)} value={equityRange}>
@@ -153,7 +180,7 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
           </div>
         </div>
         <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={equity} margin={{left: -18, right: 8, top: 8, bottom: 0}}>
+          <AreaChart data={equityPoints} margin={{left: -18, right: 8, top: 8, bottom: 0}}>
             <defs>
               <linearGradient id="equityGradient" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor="#2f7cc0" stopOpacity="0.28" />
@@ -163,7 +190,26 @@ export function DashboardView({metrics, equity, equityRange, equityMode, onEquit
             <CartesianGrid strokeDasharray="4 5" vertical={false} stroke="#d7e1ef" />
             <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
             <YAxis tickFormatter={(value) => `$${Math.round(value / 1000)}K`} tickLine={false} axisLine={false} tickMargin={8} width={52} />
+            <YAxis yAxisId="pnl" orientation="right" hide domain={["auto", "auto"]} />
             <Tooltip content={<EquityTooltip />} cursor={{stroke: "#d7e1ef", strokeWidth: 2}} />
+            <Line
+              type="monotone"
+              dataKey="invested"
+              stroke="#7b95b8"
+              strokeDasharray="6 6"
+              strokeWidth={2}
+              dot={false}
+              activeDot={false}
+            />
+            <Line
+              yAxisId="pnl"
+              type="monotone"
+              dataKey="totalPnl"
+              stroke={pnlStroke}
+              strokeWidth={2}
+              dot={false}
+              activeDot={false}
+            />
             <Area activeDot={{r: 6, fill: "#2f7cc0", stroke: "#ffffff", strokeWidth: 3}} dataKey="value" stroke="#2f7cc0" fill="url(#equityGradient)" strokeWidth={3} />
           </AreaChart>
         </ResponsiveContainer>

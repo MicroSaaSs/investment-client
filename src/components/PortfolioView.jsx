@@ -132,11 +132,13 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
                 <span>Triggers</span>
                 <div className="position-detail-trigger-lines">
                   <div className="position-detail-trigger-row">
-                    <strong>CORR {pctMagnitude(Math.abs(position.corr))}</strong>
+                    <strong>CORR</strong>
+                    <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
                     <strong>{money(position.correctionTrigger, 0)}</strong>
                   </div>
                   <div className="position-detail-trigger-row">
-                    <strong>DD_P {pctMagnitude(Math.abs(position.ddPlan))}</strong>
+                    <strong>DD_P</strong>
+                    <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
                     <strong>{money(position.drawdownTrigger, 0)}</strong>
                   </div>
                 </div>

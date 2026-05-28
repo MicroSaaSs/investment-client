@@ -586,9 +586,17 @@ export function MobilePositionCard({
                 </div>
                 <div className="mobile-position-card-stat">
                   <span>Triggers</span>
-                  <div className="mobile-position-card-stat-lines">
-                    <strong>CORR {pctMagnitude(Math.abs(position.corr))} {money(position.correctionTrigger, 0)}</strong>
-                    <strong>DD_P {pctMagnitude(Math.abs(position.ddPlan))} {money(position.drawdownTrigger, 0)}</strong>
+                  <div className="mobile-position-card-trigger-lines">
+                    <div className="mobile-position-card-trigger-row">
+                      <strong>CORR</strong>
+                      <strong>{pctMagnitude(Math.abs(position.corr))}</strong>
+                      <strong>{money(position.correctionTrigger, 0)}</strong>
+                    </div>
+                    <div className="mobile-position-card-trigger-row">
+                      <strong>DD_P</strong>
+                      <strong>{pctMagnitude(Math.abs(position.ddPlan))}</strong>
+                      <strong>{money(position.drawdownTrigger, 0)}</strong>
+                    </div>
                   </div>
                 </div>
               </>
