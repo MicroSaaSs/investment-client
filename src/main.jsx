@@ -234,12 +234,12 @@ function App() {
     if (!targetPortfolioId || targetPortfolioId === portfolioId) return;
     if (Object.prototype.hasOwnProperty.call(aiPortfolioInvestedById, targetPortfolioId)) return;
     let cancelled = false;
-    api.getWorkspace(targetPortfolioId, "month", "daily")
-      .then((workspace) => {
+    api.getMetrics(targetPortfolioId)
+      .then((portfolioMetrics) => {
         if (cancelled) return;
         setAiPortfolioInvestedById((current) => ({
           ...current,
-          [targetPortfolioId]: Number(workspace?.metrics?.invested || 0) > 0,
+          [targetPortfolioId]: Number(portfolioMetrics?.invested || 0) > 0,
         }));
       })
       .catch(() => {
