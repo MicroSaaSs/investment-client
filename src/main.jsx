@@ -42,6 +42,17 @@ function uniqueLatestAllocationAdjustments(adjustments) {
   return [...map.values()];
 }
 
+function hasPortfolioTickerDuplicate(positions, ticker, excludedId = null) {
+  const normalizedTicker = String(ticker || "").trim().toUpperCase();
+  if (!normalizedTicker) return false;
+  return (positions || []).some((position) =>
+    position
+      && String(position.ticker || "").trim().toUpperCase() === normalizedTicker
+      && position.id !== excludedId
+      && !position.archived
+  );
+}
+
 function applyDisplayOrderToPositions(positions, orderedIds) {
   const orderMap = new Map(orderedIds.map((id, index) => [id, index + 1]));
   return (positions || []).map((position) => {
@@ -226,8 +237,14 @@ function App() {
   useEffect(() => {
     if (!portfolioId) return;
     setAiSummary(null);
-    refreshPortfolioViews(portfolioId).catch((e) => setError(String(e.message || e)));
-  }, [portfolioId, equityRange, equityMode]);
+    refreshPortfolioBaseData(portfolioId).catch((e) => setError(String(e.message || e)));
+    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => setError(String(e.message || e)));
+  }, [portfolioId]);
+
+  useEffect(() => {
+    if (!portfolioId) return;
+    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => setError(String(e.message || e)));
+  }, [equityRange, equityMode]);
 
   useEffect(() => {
     const targetPortfolioId = aiSettings.portfolioId;
@@ -287,25 +304,39 @@ function App() {
     }
   }
 
-  async function refreshPortfolioViews(id = portfolioId) {
+  async function refreshPortfolioBaseData(id = portfolioId) {
     if (!id) return;
     setWorkspaceBusy(true);
     try {
-      const [portfolioMetrics, portfolioEquityHistory, portfolioPositions, portfolioTransactions] = await Promise.all([
+      const [portfolioMetrics, portfolioPositions, portfolioTransactions] = await Promise.all([
         api.getMetrics(id),
-        api.getEquityCurve(id, equityRange, equityMode),
         api.getPositions(id),
         api.getTransactions(id),
       ]);
       startTransition(() => {
         setMetrics(portfolioMetrics || null);
-        setEquityHistory(portfolioEquityHistory || null);
         setRawPositions(portfolioPositions || []);
         setTransactions(portfolioTransactions || []);
       });
     } finally {
       setWorkspaceBusy(false);
     }
+  }
+
+  async function refreshEquityHistory(id = portfolioId, range = equityRange, mode = equityMode) {
+    if (!id) return;
+    const history = await api.getEquityCurve(id, range, mode);
+    startTransition(() => {
+      setEquityHistory(history || null);
+    });
+  }
+
+  async function refreshPortfolioViews(id = portfolioId) {
+    if (!id) return;
+    await Promise.all([
+      refreshPortfolioBaseData(id),
+      refreshEquityHistory(id),
+    ]);
   }
 
   function updateAiSetting(key, value) {
@@ -440,7 +471,7 @@ function App() {
     setError("");
     await api.deletePortfolio(targetPortfolio.id);
     setMetrics(null);
-    setEquity([]);
+    setEquityHistory(null);
     setRawPositions([]);
     setTransactions([]);
     const list = await loadPortfolios();
@@ -451,6 +482,10 @@ function App() {
   async function handleCreatePosition(payload) {
     if (!portfolioId) return;
     setError("");
+    if (hasPortfolioTickerDuplicate(rawPositions, payload.ticker, payload.id)) {
+      setError(`Position with ticker ${String(payload.ticker || "").trim().toUpperCase()} already exists in this portfolio`);
+      return;
+    }
     const {allocationAdjustments, positionPayload} = splitAllocationPayload(payload);
     const normalizedAdjustments = uniqueLatestAllocationAdjustments(allocationAdjustments)
       .filter((adjustment) => {

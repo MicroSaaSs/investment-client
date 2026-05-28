@@ -73,7 +73,10 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
             <button
               aria-label={`Delete ${position.ticker}`}
               className="toolbar-icon-button toolbar-icon-button-danger"
-              onClick={() => onDeletePosition(position)}
+              onClick={() => {
+                onClose();
+                onDeletePosition(position);
+              }}
               title="Delete"
               type="button"
             >

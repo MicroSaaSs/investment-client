@@ -1,5 +1,5 @@
 import React from "react";
-import {Area, AreaChart, CartesianGrid, Cell, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
+import {Cell, Pie, PieChart, ResponsiveContainer, Tooltip} from "recharts";
 import {compactMoney, money, pct} from "../utils/format";
 import {MetricDetailsModal} from "./MetricDetailsModal";
 
@@ -17,6 +17,41 @@ const EQUITY_MODES = [
   {value: "daily", label: "Daily"},
   {value: "monthly", label: "Monthly"},
 ];
+
+function interpolateCrossing(prevValue, nextValue, prevThreshold, nextThreshold) {
+  const prevDelta = prevValue - prevThreshold;
+  const nextDelta = nextValue - nextThreshold;
+  const denominator = prevDelta - nextDelta;
+  if (!Number.isFinite(denominator) || Math.abs(denominator) < 1e-9) return null;
+  const ratio = prevDelta / denominator;
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio >= 1) return null;
+  return ratio;
+}
+
+function normalizeEquityPoints(points) {
+  return (points || []).map((point, index) => ({
+    ...point,
+    chartIndex: index,
+    value: Number(point?.value || 0),
+    invested: Number(point?.invested || 0),
+    cash: Number(point?.cash || 0),
+    marketValue: Number(point?.marketValue || 0),
+    totalPnl: Number(point?.totalPnl ?? (Number(point?.value || 0) - Number(point?.invested || 0)) || 0),
+  }));
+}
+
+function buildEquityTicks(points, maxTicks = 8) {
+  if (!points?.length) return [];
+  if (points.length <= maxTicks) return points.map((_, index) => index);
+  const step = Math.max(1, Math.floor((points.length - 1) / (maxTicks - 1)));
+  const ticks = [];
+  for (let index = 0; index < points.length; index += step) {
+    ticks.push(index);
+  }
+  const lastIndex = points.length - 1;
+  if (ticks[ticks.length - 1] !== lastIndex) ticks.push(lastIndex);
+  return ticks;
+}
 
 function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, chartWidth, compact}) {
   if (!name || !percent || percent <= 0) return null;
@@ -103,56 +138,312 @@ function MetricCard({label, value, detail, tone = "default", onClick}) {
   );
 }
 
-function EquityTooltip({active, label, payload}) {
-  if (!active || !payload?.length) return null;
-  const point = payload[0]?.payload || {};
-  const value = Number(point.value || 0);
-  const invested = Number(point.invested || 0);
-  const cash = Number(point.cash || 0);
-  const marketValue = Number(point.marketValue || 0);
-  const pnl = Number((point.totalPnl ?? (value - invested)) || 0);
-  const pnlPct = invested > 0 ? pnl / invested : 0;
+const CapitalCurveChart = React.memo(function CapitalCurveChart({
+  points,
+  equityTicks,
+  capitalStroke,
+}) {
+  const wrapperRef = React.useRef(null);
+  const [size, setSize] = React.useState({width: 0, height: 320});
+  const [hoverIndex, setHoverIndex] = React.useState(null);
+
+  React.useEffect(() => {
+    const node = wrapperRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
+      setSize((current) => (
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : {width: nextWidth, height: nextHeight}
+      ));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const chart = React.useMemo(() => {
+    const width = size.width || 0;
+    const height = size.height || 320;
+    const margin = {top: 8, right: 12, bottom: 34, left: 56};
+    const innerWidth = Math.max(0, width - margin.left - margin.right);
+    const innerHeight = Math.max(0, height - margin.top - margin.bottom);
+    const maxCapital = Math.max(...points.map((point) => Math.max(point.value, point.invested)), 0);
+    const capitalMax = maxCapital <= 0 ? 1 : maxCapital * 1.05;
+    const pnlValues = points.map((point) => point.totalPnl);
+    const rawPnlMin = Math.min(...pnlValues, 0);
+    const rawPnlMax = Math.max(...pnlValues, 0);
+    const pnlPadding = Math.max((rawPnlMax - rawPnlMin) * 0.08, 1);
+    const pnlMin = rawPnlMin - pnlPadding;
+    const pnlMax = rawPnlMax + pnlPadding;
+    const xForIndex = (index) => {
+      if (points.length <= 1) return margin.left;
+      return margin.left + (innerWidth * index) / (points.length - 1);
+    };
+    const yForCapital = (value) => margin.top + innerHeight - (Math.max(0, value) / capitalMax) * innerHeight;
+    const yForPnl = (value) => {
+      if (pnlMax === pnlMin) return margin.top + innerHeight / 2;
+      return margin.top + innerHeight - ((value - pnlMin) / (pnlMax - pnlMin)) * innerHeight;
+    };
+    const yTicks = Array.from({length: 5}, (_, index) => {
+      const value = (capitalMax / 4) * (4 - index);
+      return {value, y: yForCapital(value)};
+    });
+    const areaPath = points.length
+      ? [
+          `M ${xForIndex(0)} ${yForCapital(points[0].value)}`,
+          ...points.slice(1).map((point) => `L ${xForIndex(point.chartIndex)} ${yForCapital(point.value)}`),
+          `L ${xForIndex(points[points.length - 1].chartIndex)} ${margin.top + innerHeight}`,
+          `L ${xForIndex(0)} ${margin.top + innerHeight}`,
+          "Z",
+        ].join(" ")
+      : "";
+    const investedPath = points.length
+      ? [
+          `M ${xForIndex(0)} ${yForCapital(points[0].invested)}`,
+          ...points.slice(1).map((point) => `L ${xForIndex(point.chartIndex)} ${yForCapital(point.invested)}`),
+        ].join(" ")
+      : "";
+
+    const buildSegments = (valueSelector, thresholdSelector, ySelector, positiveColor, negativeColor) => {
+      const segments = [];
+      for (let index = 0; index < points.length - 1; index += 1) {
+        const current = points[index];
+        const next = points[index + 1];
+        const currentValue = valueSelector(current);
+        const nextValue = valueSelector(next);
+        const currentThreshold = thresholdSelector(current);
+        const nextThreshold = thresholdSelector(next);
+        const currentDelta = currentValue - currentThreshold;
+        const nextDelta = nextValue - nextThreshold;
+        const x1 = xForIndex(current.chartIndex);
+        const y1 = ySelector(currentValue);
+        const x2 = xForIndex(next.chartIndex);
+        const y2 = ySelector(nextValue);
+
+        if ((currentDelta >= 0 && nextDelta >= 0) || (currentDelta <= 0 && nextDelta <= 0)) {
+          segments.push({
+            x1,
+            y1,
+            x2,
+            y2,
+            stroke: currentDelta >= 0 ? positiveColor : negativeColor,
+          });
+          continue;
+        }
+
+        const ratio = interpolateCrossing(currentValue, nextValue, currentThreshold, nextThreshold);
+        if (ratio == null) {
+          segments.push({
+            x1,
+            y1,
+            x2,
+            y2,
+            stroke: currentDelta >= 0 ? positiveColor : negativeColor,
+          });
+          continue;
+        }
+
+        const crossX = x1 + (x2 - x1) * ratio;
+        const crossY = y1 + (y2 - y1) * ratio;
+        segments.push({
+          x1,
+          y1,
+          x2: crossX,
+          y2: crossY,
+          stroke: currentDelta >= 0 ? positiveColor : negativeColor,
+        });
+        segments.push({
+          x1: crossX,
+          y1: crossY,
+          x2,
+          y2,
+          stroke: nextDelta >= 0 ? positiveColor : negativeColor,
+        });
+      }
+      return segments;
+    };
+
+    return {
+      margin,
+      innerWidth,
+      innerHeight,
+      yTicks,
+      areaPath,
+      investedPath,
+      capitalSegments: buildSegments((point) => point.value, (point) => point.invested, yForCapital, "#2f7cc0", "#c3504c"),
+      pnlSegments: buildSegments((point) => point.totalPnl, () => 0, yForPnl, "#2f9961", "#c3504c"),
+      xForIndex,
+      yForCapital,
+    };
+  }, [points, size]);
+
+  const hoveredPoint = hoverIndex == null ? null : points[hoverIndex] || null;
+  const hoveredCapitalX = hoveredPoint ? chart.xForIndex(hoveredPoint.chartIndex) : null;
+  const hoveredCapitalY = hoveredPoint ? chart.yForCapital(hoveredPoint.value) : null;
+  const tooltipStyle = hoveredPoint && hoveredCapitalX != null ? {
+    position: "absolute",
+    left: Math.min(Math.max(12, hoveredCapitalX + 14), Math.max(12, size.width - 210)),
+    top: Math.max(12, hoveredCapitalY - 18),
+    pointerEvents: "none",
+  } : null;
+
+  const handlePointerMove = React.useCallback((event) => {
+    if (!wrapperRef.current || !points.length) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const relativeX = event.clientX - rect.left - chart.margin.left;
+    const safeWidth = Math.max(1, chart.innerWidth);
+    const ratio = Math.min(1, Math.max(0, relativeX / safeWidth));
+    const nextIndex = Math.round(ratio * (points.length - 1));
+    setHoverIndex((current) => (current === nextIndex ? current : nextIndex));
+  }, [chart.innerWidth, chart.margin.left, points.length]);
+
+  const handlePointerLeave = React.useCallback(() => setHoverIndex(null), []);
+
   return (
-    <div className="chart-tooltip">
-      <strong>{label}</strong>
-      <span>Capital: {money(value)}</span>
-      <span>Invested: {money(invested)}</span>
-      <span>Cash: {money(cash)}</span>
-      <span>Market value: {money(marketValue)}</span>
-      <span>PnL: {money(pnl)} / {pct(pnlPct * 100)}</span>
+    <div ref={wrapperRef} style={{position: "relative", width: "100%", height: 320}}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 320)}`}
+        preserveAspectRatio="none"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        <defs>
+          <linearGradient id="equityGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#2f7cc0" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#2f7cc0" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {chart.yTicks.map((tick) => (
+          <g key={tick.value}>
+            <line
+              x1={chart.margin.left}
+              x2={chart.margin.left + chart.innerWidth}
+              y1={tick.y}
+              y2={tick.y}
+              stroke="#d7e1ef"
+              strokeDasharray="4 5"
+            />
+            <text x={chart.margin.left - 8} y={tick.y + 4} textAnchor="end" fill="#61769a" fontSize="12">
+              {`$${Math.round(tick.value / 1000)}K`}
+            </text>
+          </g>
+        ))}
+        {equityTicks.map((tickIndex) => {
+          const point = points[tickIndex];
+          if (!point) return null;
+          return (
+            <text
+              key={point.chartIndex}
+              x={chart.xForIndex(point.chartIndex)}
+              y={chart.margin.top + chart.innerHeight + 24}
+              textAnchor={tickIndex === 0 ? "start" : tickIndex === equityTicks[equityTicks.length - 1] ? "end" : "middle"}
+              fill="#61769a"
+              fontSize="12"
+            >
+              {point.day}
+            </text>
+          );
+        })}
+        {chart.areaPath ? <path d={chart.areaPath} fill="url(#equityGradient)" stroke="none" /> : null}
+        {chart.investedPath ? (
+          <path
+            d={chart.investedPath}
+            fill="none"
+            stroke="#7b95b8"
+            strokeWidth="2"
+            strokeDasharray="6 6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : null}
+        {chart.capitalSegments.map((segment, index) => (
+          <line
+            key={`capital-${index}`}
+            x1={segment.x1}
+            y1={segment.y1}
+            x2={segment.x2}
+            y2={segment.y2}
+            stroke={segment.stroke}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        ))}
+        {chart.pnlSegments.map((segment, index) => (
+          <line
+            key={`pnl-${index}`}
+            x1={segment.x1}
+            y1={segment.y1}
+            x2={segment.x2}
+            y2={segment.y2}
+            stroke={segment.stroke}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        ))}
+        {hoveredPoint && hoveredCapitalX != null ? (
+          <>
+            <line
+              x1={hoveredCapitalX}
+              x2={hoveredCapitalX}
+              y1={chart.margin.top}
+              y2={chart.margin.top + chart.innerHeight}
+              stroke="#d7e1ef"
+              strokeWidth="2"
+            />
+            <circle cx={hoveredCapitalX} cy={hoveredCapitalY} r="6" fill={capitalStroke} stroke="#ffffff" strokeWidth="3" />
+          </>
+        ) : null}
+      </svg>
+      {hoveredPoint && tooltipStyle ? (
+        <div className="chart-tooltip" style={tooltipStyle}>
+          <strong>{hoveredPoint.day}</strong>
+          <span>Capital: {money(hoveredPoint.value)}</span>
+          <span>Invested: {money(hoveredPoint.invested)}</span>
+          <span>Cash: {money(hoveredPoint.cash)}</span>
+          <span>Market value: {money(hoveredPoint.marketValue)}</span>
+          <span>PnL: {money(hoveredPoint.totalPnl)} / {pct((hoveredPoint.invested > 0 ? hoveredPoint.totalPnl / hoveredPoint.invested : 0) * 100)}</span>
+        </div>
+      ) : null}
     </div>
   );
-}
+});
 
 export function DashboardView({metrics, equityHistory, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
   const [detailModal, setDetailModal] = React.useState(null);
-  const rawEquityPoints = equityHistory?.points || [];
-  const equityPoints = React.useMemo(() => rawEquityPoints.map((point) => {
-    const value = Number(point?.value || 0);
-    const invested = Number(point?.invested || 0);
-    const totalPnl = Number(point?.totalPnl ?? (value - invested) || 0);
-    return {
-      ...point,
-      capitalAbove: value >= invested ? value : null,
-      capitalBelow: value < invested ? value : null,
-      pnlPositive: totalPnl >= 0 ? totalPnl : null,
-      pnlNegative: totalPnl < 0 ? totalPnl : null,
-    };
-  }), [rawEquityPoints]);
-  if (!metrics) return null;
+  const rawEquityPoints = React.useMemo(() => normalizeEquityPoints(equityHistory?.points || []), [equityHistory?.points]);
   const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
+  const equityTicks = React.useMemo(() => buildEquityTicks(rawEquityPoints, 9), [rawEquityPoints]);
   const pnlStroke = latestPnl < 0 ? "#c3504c" : "#2f9961";
-  const capitalStroke = latestPnl < 0 || Number(metrics?.totalValue || 0) < Number(metrics?.invested || 0) ? "#c3504c" : "#2f7cc0";
-  const detailPositions = (metrics.positions || []).filter((position) => position.mode !== "WATCHLIST");
-  const activePositions = detailPositions.filter((position) => position.includeInAllocation);
-  const boughtAllocation = activePositions.filter((position) => position.invested > 0).map((position) => ({
-    name: position.ticker,
-    value: position.invested,
-  }));
-  const currentAllocation = activePositions.filter((position) => position.current > 0).map((position) => ({
-    name: position.ticker,
-    value: position.current,
-  }));
+  const capitalStroke = Number(metrics?.totalValue || 0) < Number(metrics?.invested || 0) ? "#c3504c" : "#2f7cc0";
+  const detailPositions = React.useMemo(
+    () => (metrics?.positions || []).filter((position) => position.mode !== "WATCHLIST"),
+    [metrics?.positions]
+  );
+  const activePositions = React.useMemo(
+    () => detailPositions.filter((position) => position.includeInAllocation),
+    [detailPositions]
+  );
+  const boughtAllocation = React.useMemo(
+    () => activePositions.filter((position) => position.invested > 0).map((position) => ({
+      name: position.ticker,
+      value: position.invested,
+    })),
+    [activePositions]
+  );
+  const currentAllocation = React.useMemo(
+    () => activePositions.filter((position) => position.current > 0).map((position) => ({
+      name: position.ticker,
+      value: position.current,
+    })),
+    [activePositions]
+  );
+  if (!metrics) return null;
 
   return (
     <main className="dashboard-layout">
@@ -192,69 +483,11 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
             </select>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={equityPoints} margin={{left: -18, right: 8, top: 8, bottom: 0}}>
-            <defs>
-              <linearGradient id="equityGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#2f7cc0" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="#2f7cc0" stopOpacity="0.02" />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="4 5" vertical={false} stroke="#d7e1ef" />
-            <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickFormatter={(value) => `$${Math.round(value / 1000)}K`} tickLine={false} axisLine={false} tickMargin={8} width={52} />
-            <YAxis yAxisId="pnl" orientation="right" hide domain={["auto", "auto"]} />
-            <Tooltip content={<EquityTooltip />} cursor={{stroke: "#d7e1ef", strokeWidth: 2}} />
-            <Line
-              type="monotone"
-              dataKey="invested"
-              stroke="#7b95b8"
-              strokeDasharray="6 6"
-              strokeWidth={2}
-              dot={false}
-              activeDot={false}
-            />
-            <Line
-              yAxisId="pnl"
-              type="monotone"
-              dataKey="pnlPositive"
-              stroke="#2f9961"
-              strokeWidth={2}
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-            />
-            <Line
-              yAxisId="pnl"
-              type="monotone"
-              dataKey="pnlNegative"
-              stroke="#c3504c"
-              strokeWidth={2}
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-            />
-            <Area activeDot={{r: 6, fill: capitalStroke, stroke: "#ffffff", strokeWidth: 3}} dataKey="value" stroke={capitalStroke} fill="url(#equityGradient)" strokeWidth={3} />
-            <Line
-              type="monotone"
-              dataKey="capitalAbove"
-              stroke="#2f7cc0"
-              strokeWidth={3}
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="capitalBelow"
-              stroke="#c3504c"
-              strokeWidth={3}
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <CapitalCurveChart
+          points={rawEquityPoints}
+          equityTicks={equityTicks}
+          capitalStroke={capitalStroke}
+        />
       </section>
       <div className="allocation-pie-grid">
         <section className="panel allocation-pie-panel">

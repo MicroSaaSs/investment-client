@@ -41,6 +41,9 @@ The client has separate responsive behavior for desktop and mobile, including:
   - `BTC`, `ETH`, `TON`
   - backend resolves bare crypto tickers to Binance `USDT` pairs by default
 - cash and cash-ETF defaults are applied when switching types, and cleared again when switching back to stock/crypto
+- duplicate tickers are blocked per portfolio before submit, and the backend enforces the same rule
+- deleting a position from the portfolio detail sheet closes that sheet before the delete confirmation opens
+- portfolio refresh helpers now reload both base metrics/positions/transactions and equity history after create/edit/delete flows
 
 ## Environment
 
