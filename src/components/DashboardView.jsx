@@ -126,11 +126,7 @@ function EquityTooltip({active, label, payload}) {
 
 export function DashboardView({metrics, equityHistory, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
   const [detailModal, setDetailModal] = React.useState(null);
-  if (!metrics) return null;
   const rawEquityPoints = equityHistory?.points || [];
-  const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
-  const pnlStroke = latestPnl < 0 ? "#c3504c" : "#2f9961";
-  const capitalStroke = latestPnl < 0 || Number(metrics?.totalValue || 0) < Number(metrics?.invested || 0) ? "#c3504c" : "#2f7cc0";
   const equityPoints = React.useMemo(() => rawEquityPoints.map((point) => {
     const value = Number(point?.value || 0);
     const invested = Number(point?.invested || 0);
@@ -143,6 +139,10 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
       pnlNegative: totalPnl < 0 ? totalPnl : null,
     };
   }), [rawEquityPoints]);
+  if (!metrics) return null;
+  const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
+  const pnlStroke = latestPnl < 0 ? "#c3504c" : "#2f9961";
+  const capitalStroke = latestPnl < 0 || Number(metrics?.totalValue || 0) < Number(metrics?.invested || 0) ? "#c3504c" : "#2f7cc0";
   const detailPositions = (metrics.positions || []).filter((position) => position.mode !== "WATCHLIST");
   const activePositions = detailPositions.filter((position) => position.includeInAllocation);
   const boughtAllocation = activePositions.filter((position) => position.invested > 0).map((position) => ({
