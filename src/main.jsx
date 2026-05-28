@@ -291,12 +291,17 @@ function App() {
     if (!id) return;
     setWorkspaceBusy(true);
     try {
-      const workspace = await api.getWorkspace(id, equityRange, equityMode);
+      const [portfolioMetrics, portfolioEquityHistory, portfolioPositions, portfolioTransactions] = await Promise.all([
+        api.getMetrics(id),
+        api.getEquityCurve(id, equityRange, equityMode),
+        api.getPositions(id),
+        api.getTransactions(id),
+      ]);
       startTransition(() => {
-        setMetrics(workspace.metrics || null);
-        setEquityHistory(workspace.equityHistory || null);
-        setRawPositions(workspace.positions || []);
-        setTransactions(workspace.transactions || []);
+        setMetrics(portfolioMetrics || null);
+        setEquityHistory(portfolioEquityHistory || null);
+        setRawPositions(portfolioPositions || []);
+        setTransactions(portfolioTransactions || []);
       });
     } finally {
       setWorkspaceBusy(false);
