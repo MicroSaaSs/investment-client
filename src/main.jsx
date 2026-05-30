@@ -9,6 +9,7 @@ import {TabNav} from "./components/TabNav";
 import {DashboardView} from "./components/DashboardView";
 import {PositionsView} from "./components/PositionsView";
 import {WatchListView} from "./components/WatchListView";
+import {NewsView} from "./components/NewsView";
 import {AvgDrawdownView} from "./components/AvgDrawdownView";
 import {AiView} from "./components/AiView";
 import {EmptyState} from "./components/EmptyState";
@@ -22,6 +23,7 @@ import {DEFAULT_POSITION_SUMMARY_METRICS, normalizePositionSummaryMetricIds} fro
 import "./styles.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const newsAutoRequestState = new Map();
 
 function getTelegramInitData() {
   const initData = window.Telegram?.WebApp?.initData;
@@ -159,6 +161,9 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [equityHistory, setEquityHistory] = useState(null);
+  const [news, setNews] = useState(null);
+  const [newsBusy, setNewsBusy] = useState(false);
+  const [newsFilters, setNewsFilters] = useState({ticker: "all", period: "7d"});
   const [equityRange, setEquityRange] = useState("month");
   const [equityMode, setEquityMode] = useState("daily");
   const [aiSettings, setAiSettings] = useState({
@@ -275,9 +280,20 @@ function App() {
   useEffect(() => {
     if (!portfolioId) return;
     setAiSummary(null);
+    setNews(null);
+    setNewsFilters({ticker: "all", period: "7d"});
     refreshPortfolioBaseData(portfolioId).catch((e) => setError(String(e.message || e)));
     refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => setError(String(e.message || e)));
   }, [portfolioId]);
+
+  useEffect(() => {
+    if (!portfolioId || tab !== "news") return;
+    const requestKey = `${portfolioId}:${newsFilters.ticker}:${newsFilters.period}`;
+    const requestState = newsAutoRequestState.get(requestKey);
+    if (requestState === "loading" || requestState === "loaded" || requestState === "failed") return;
+    newsAutoRequestState.set(requestKey, "loading");
+    refreshNews(portfolioId, {auto: true, filters: newsFilters}).catch((e) => setError(String(e.message || e)));
+  }, [newsFilters, portfolioId, tab]);
 
   useEffect(() => {
     if (!portfolioId) return;
@@ -367,6 +383,32 @@ function App() {
     startTransition(() => {
       setEquityHistory(history || null);
     });
+  }
+
+  async function refreshNews(id = portfolioId, options = {}) {
+    if (!id) return;
+    const {auto = false} = options;
+    const nextFilters = {
+      ticker: options.filters?.ticker || newsFilters.ticker || "all",
+      period: options.filters?.period || newsFilters.period || "7d",
+    };
+    const requestKey = `${id}:${nextFilters.ticker}:${nextFilters.period}`;
+    setNewsBusy(true);
+    try {
+      const payload = await api.getNews(id, nextFilters.ticker, nextFilters.period);
+      newsAutoRequestState.set(requestKey, "loaded");
+      startTransition(() => {
+        setNews(payload || null);
+        setNewsFilters(nextFilters);
+      });
+    } catch (error) {
+      if (auto) {
+        newsAutoRequestState.set(requestKey, "failed");
+      }
+      throw error;
+    } finally {
+      setNewsBusy(false);
+    }
   }
 
   async function refreshPortfolioViews(id = portfolioId) {
@@ -575,6 +617,7 @@ function App() {
     setPortfolioId("");
     setMetrics(null);
     setEquityHistory(null);
+    setNews(null);
     setAiSettings({
       notificationsEnabled: false,
       schedule: "DAILY",
@@ -585,6 +628,7 @@ function App() {
     });
     setAiSummary(null);
     setAiPortfolioInvestedById({});
+    newsAutoRequestState.clear();
     setRawPositions([]);
     setTransactions([]);
     setError("");
@@ -878,6 +922,23 @@ function App() {
             onCreateWatch={() => setModal("watchlist")}
             onDeleteWatch={(position) => setModal({type: "delete-position", data: position})}
             positions={watchlistPositions}
+          />
+        ) : null}
+        {portfolios.length && tab === "news" ? (
+          <NewsView
+            news={news}
+            newsBusy={newsBusy}
+            newsFilters={newsFilters}
+            onRefresh={(nextFilters = {}) => refreshNews(portfolioId, {
+              filters: {
+                ticker: nextFilters.ticker || newsFilters.ticker,
+                period: nextFilters.period || newsFilters.period,
+              },
+            }).catch((e) => setError(String(e.message || e)))}
+            portfolioName={selectedPortfolio?.name || ""}
+            tickers={[...new Set((rawPositions || [])
+              .map((position) => String(position?.ticker || "").trim().toUpperCase())
+              .filter((ticker) => ticker && ticker !== "CASH"))]}
           />
         ) : null}
         {portfolios.length && tab === "avg-drawdown" ? <AvgDrawdownView avgDrawdown={avgDrawdownPositions} /> : null}
