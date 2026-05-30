@@ -3450,17 +3450,18 @@ tbody td > small {
   .mobile-position-card-stat-wide span {
     display: block;
     color: #72839f;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
   .mobile-position-card-stat strong,
   .mobile-position-card-stat-wide strong {
     display: block;
     margin-top: 6px;
-    font-size: 14px;
+    font-size: 13px;
     letter-spacing: -0.02em;
+    line-height: 1.22;
   }
   .mobile-position-card-stat-lines {
     display: grid;
@@ -3509,7 +3510,7 @@ tbody td > small {
     display: block;
     margin-top: 6px;
     color: #50627f;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1.3;
   }

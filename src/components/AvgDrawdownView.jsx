@@ -51,6 +51,7 @@ export function AvgDrawdownView({avgDrawdown}) {
               <th>Ticker</th>
               <th>Company</th>
               <th className="table-center">Peak Price</th>
+              <th className="table-center">Price</th>
               <th className="table-center">Drawdown</th>
               <th className="table-center">Avg Drawdown</th>
               <th className="table-center">Analysis Window</th>
@@ -63,6 +64,7 @@ export function AvgDrawdownView({avgDrawdown}) {
                 <td><strong>{position.ticker}</strong></td>
                 <td>{position.company || "—"}</td>
                 <td className="table-center">{money(position.peak, 2)}</td>
+                <td className="table-center">{money(position.price, 2)}</td>
                 <td className="table-center">{pct(position.dd)}</td>
                 <td className="table-center">{pctNegative(position.avgDrawdown)}</td>
                 <td className="table-center">{position.avgDrawdownPeriod} mo</td>
@@ -87,6 +89,7 @@ export function AvgDrawdownView({avgDrawdown}) {
             </div>
             <div className="mobile-card-summary">
               <span><strong>Peak</strong>{money(position.peak, 2)}</span>
+              <span><strong>Price</strong>{money(position.price, 2)}</span>
               <span><strong>Drawdown</strong>{pct(position.dd)}</span>
               <span><strong>Window</strong>{position.avgDrawdownPeriod} mo</span>
               <span><strong>Interval</strong>{position.avgDrawdownInterval} mo</span>

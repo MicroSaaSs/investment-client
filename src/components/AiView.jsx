@@ -26,8 +26,9 @@ export function AiView({
 }) {
   const telegramLinked = currentUser?.telegramLinked;
   const selectedAiPortfolioId = aiSettings.portfolioId || portfolioId || "";
+  const summaryLockActive = Boolean(aiSummary?.nextAvailableAt && !Number.isNaN(Date.parse(aiSummary.nextAvailableAt)) && Date.parse(aiSummary.nextAvailableAt) > Date.now());
   const canSchedule = Boolean(telegramLinked && selectedAiPortfolioId && hasInvestedPosition);
-  const canFetchSummary = Boolean(selectedAiPortfolioId && hasInvestedPosition && !aiSummary?.nextAvailableAt);
+  const canFetchSummary = Boolean(selectedAiPortfolioId && hasInvestedPosition && !summaryLockActive);
 
   return (
     <main className="ai-layout">
@@ -166,7 +167,7 @@ export function AiView({
           </button>
         </div>
 
-        {aiSummary?.nextAvailableAt ? <div className="ai-notice"><strong>Daily limit reached.</strong><span>AI analysis is available once per day. Let the portfolio breathe and come back after 00:01 ET.</span></div> : null}
+        {summaryLockActive ? <div className="ai-notice"><strong>Daily limit reached.</strong><span>AI analysis is available once per day. Let the portfolio breathe and come back after 00:01 ET.</span></div> : null}
 
         <div className="ai-summary-card">
           <div className="ai-summary-head">

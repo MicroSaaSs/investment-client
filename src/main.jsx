@@ -71,6 +71,21 @@ function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function nextEtSummaryResetIso() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date());
+  const year = Number(parts.find((part) => part.type === "year")?.value || 0);
+  const month = Number(parts.find((part) => part.type === "month")?.value || 1);
+  const day = Number(parts.find((part) => part.type === "day")?.value || 1);
+  const nextEtMidnight = new Date(Date.UTC(year, month - 1, day + 1, 4, 1, 0));
+  return nextEtMidnight.toISOString();
+}
+
 function isTransientTelegramBootstrapError(error) {
   const message = String(error?.message || error || "");
   return /Failed to fetch|Load failed|NetworkError|fetch failed|502|503|504|timeout|timed out|Bad Gateway|Service Unavailable|Gateway Timeout/i.test(message);
@@ -687,7 +702,7 @@ function App() {
           ...current,
           portfolioId: targetPortfolioId,
           portfolioName: targetPortfolioName || current?.portfolioName || "",
-          nextAvailableAt: "locked",
+          nextAvailableAt: nextEtSummaryResetIso(),
           text: current?.text || "",
         }));
       }
