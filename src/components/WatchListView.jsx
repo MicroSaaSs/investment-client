@@ -12,9 +12,9 @@ function companyLabel(position) {
   return (position.company || "").trim() || "—";
 }
 
-function SourceBadge({ source }) {
+function SourceBadge({ source, type }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
-  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
+  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source, type)}</span>;
 }
 
 export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
@@ -95,7 +95,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 <td className="table-center">
                   <div className="table-cell-stack table-cell-stack-center">
                     <span>{money(position.price, 2)}</span>
-                    <small><SourceBadge source={position.priceSource} /></small>
+                    <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                   </div>
                 </td>
                 <td className="table-center">{money(position.peak, 2)}</td>
@@ -135,7 +135,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
               <div>
                 <span>Price</span>
                 <strong>{money(position.price, 2)}</strong>
-                <small><SourceBadge source={position.priceSource} /></small>
+                <small><SourceBadge source={position.priceSource} type={position.type} /></small>
               </div>
               <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
               <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>

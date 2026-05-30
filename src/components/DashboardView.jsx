@@ -43,14 +43,20 @@ function normalizeEquityPoints(points) {
 function buildEquityTicks(points, maxTicks = 8) {
   if (!points?.length) return [];
   if (points.length <= maxTicks) return points.map((_, index) => index);
-  const step = Math.max(1, Math.floor((points.length - 1) / (maxTicks - 1)));
-  const ticks = [];
-  for (let index = 0; index < points.length; index += step) {
-    ticks.push(index);
-  }
   const lastIndex = points.length - 1;
-  if (ticks[ticks.length - 1] !== lastIndex) ticks.push(lastIndex);
-  return ticks;
+  const ticks = new Set([0, lastIndex]);
+  for (let slot = 1; slot < maxTicks - 1; slot += 1) {
+    const ratio = slot / (maxTicks - 1);
+    ticks.add(Math.round(lastIndex * ratio));
+  }
+  return [...ticks].sort((left, right) => left - right);
+}
+
+function formatEquityTick(day, compact) {
+  if (!day) return "";
+  const normalized = String(day);
+  if (!compact) return normalized;
+  return normalized.length >= 10 ? normalized.slice(5) : normalized;
 }
 
 function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, chartWidth, compact}) {
@@ -140,7 +146,6 @@ function MetricCard({label, value, detail, tone = "default", onClick}) {
 
 const CapitalCurveChart = React.memo(function CapitalCurveChart({
   points,
-  equityTicks,
   capitalStroke,
 }) {
   const wrapperRef = React.useRef(null);
@@ -280,6 +285,16 @@ const CapitalCurveChart = React.memo(function CapitalCurveChart({
       yForCapital,
     };
   }, [points, size]);
+  const compactTicks = size.width > 0 && size.width < 960;
+  const desiredTickCount = React.useMemo(() => {
+    const safeWidth = Math.max(1, chart.innerWidth);
+    const minLabelWidth = compactTicks ? 72 : 118;
+    return Math.max(2, Math.min(points.length, Math.floor(safeWidth / minLabelWidth)));
+  }, [chart.innerWidth, compactTicks, points.length]);
+  const visibleTicks = React.useMemo(
+    () => buildEquityTicks(points, desiredTickCount),
+    [desiredTickCount, points]
+  );
 
   const hoveredPoint = hoverIndex == null ? null : points[hoverIndex] || null;
   const hoveredCapitalX = hoveredPoint ? chart.xForIndex(hoveredPoint.chartIndex) : null;
@@ -334,7 +349,7 @@ const CapitalCurveChart = React.memo(function CapitalCurveChart({
             </text>
           </g>
         ))}
-        {equityTicks.map((tickIndex) => {
+        {visibleTicks.map((tickIndex) => {
           const point = points[tickIndex];
           if (!point) return null;
           return (
@@ -342,11 +357,11 @@ const CapitalCurveChart = React.memo(function CapitalCurveChart({
               key={point.chartIndex}
               x={chart.xForIndex(point.chartIndex)}
               y={chart.margin.top + chart.innerHeight + 24}
-              textAnchor={tickIndex === 0 ? "start" : tickIndex === equityTicks[equityTicks.length - 1] ? "end" : "middle"}
+              textAnchor={tickIndex === 0 ? "start" : tickIndex === visibleTicks[visibleTicks.length - 1] ? "end" : "middle"}
               fill="#61769a"
               fontSize="12"
             >
-              {point.day}
+              {formatEquityTick(point.day, compactTicks)}
             </text>
           );
         })}
@@ -418,7 +433,6 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
   const [detailModal, setDetailModal] = React.useState(null);
   const rawEquityPoints = React.useMemo(() => normalizeEquityPoints(equityHistory?.points || []), [equityHistory?.points]);
   const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
-  const equityTicks = React.useMemo(() => buildEquityTicks(rawEquityPoints, 9), [rawEquityPoints]);
   const pnlStroke = latestPnl < 0 ? "#c3504c" : "#2f9961";
   const capitalStroke = Number(metrics?.totalValue || 0) < Number(metrics?.invested || 0) ? "#c3504c" : "#2f7cc0";
   const detailPositions = React.useMemo(
@@ -485,7 +499,6 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
         </div>
         <CapitalCurveChart
           points={rawEquityPoints}
-          equityTicks={equityTicks}
           capitalStroke={capitalStroke}
         />
       </section>

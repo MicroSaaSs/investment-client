@@ -84,9 +84,9 @@ function SignalPill({ signal }) {
   return <span className={`signal-pill signal-${normalized}`}>{signal || "HOLD"}</span>;
 }
 
-function SourceBadge({ source }) {
+function SourceBadge({ source, type }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
-  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
+  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source, type)}</span>;
 }
 
 function isCashPosition(position) {
@@ -390,7 +390,7 @@ export function PositionsView({
                       {isCashPosition(position) ? "--" : (
                         <div className="table-cell-stack table-cell-stack-center">
                           <span>{money(position.price, 2)}</span>
-                          <small><SourceBadge source={position.priceSource} /></small>
+                    <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                         </div>
                       )}
                     </td>

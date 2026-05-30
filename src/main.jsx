@@ -53,6 +53,29 @@ function hasPortfolioTickerDuplicate(positions, ticker, excludedId = null) {
   );
 }
 
+function humanizeTelegramAuthError(error) {
+  const message = String(error?.message || error || "").trim();
+  if (!message) return "Telegram sign-in failed. Reopen the Mini App from Telegram and try again.";
+  if (/unauthorized/i.test(message)
+    || /Telegram auth is too old/i.test(message)
+    || /Telegram hash/i.test(message)
+    || /Telegram initData/i.test(message)
+    || /Telegram user/i.test(message)
+    || /auth_date/i.test(message)) {
+    return "Telegram session expired or could not be verified. Reopen the Mini App from Telegram and try again.";
+  }
+  return message;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isTransientTelegramBootstrapError(error) {
+  const message = String(error?.message || error || "");
+  return /Failed to fetch|Load failed|NetworkError|fetch failed|502|503|504|timeout|timed out|Bad Gateway|Service Unavailable|Gateway Timeout/i.test(message);
+}
+
 function applyDisplayOrderToPositions(positions, orderedIds) {
   const orderMap = new Map(orderedIds.map((id, index) => [id, index + 1]));
   return (positions || []).map((position) => {
@@ -165,14 +188,14 @@ function App() {
           await loadPortfolios();
         } else if (telegramInitData && !telegramAutoLoginAttempted.current) {
           telegramAutoLoginAttempted.current = true;
-          const authResponse = await api.authTelegram(telegramInitData);
+          const authResponse = await authTelegramWithRetry(telegramInitData);
           setCurrentUser(authResponse);
           await loadPortfolios();
         }
       } catch (e) {
         api.setToken("");
         setCurrentUser(null);
-        setError(String(e.message || e));
+        setError(telegramInitData ? humanizeTelegramAuthError(e) : String(e.message || e));
       } finally {
         setAuthBusy(false);
       }
@@ -369,7 +392,7 @@ function App() {
       setCurrentUser(authResponse);
       await loadPortfolios();
     } catch (e) {
-      setError(String(e.message || e));
+      setError(humanizeTelegramAuthError(e));
     } finally {
       setAuthBusy(false);
     }
@@ -382,12 +405,12 @@ function App() {
     try {
       const authResponse = telegramLinkCode.trim()
         ? await api.linkTelegram(telegramInitData, telegramLinkCode.trim())
-        : await api.authTelegram(telegramInitData);
+        : await authTelegramWithRetry(telegramInitData);
       setCurrentUser(authResponse);
       setTelegramLinkCode("");
       await loadPortfolios();
     } catch (e) {
-      setError(String(e.message || e));
+      setError(humanizeTelegramAuthError(e));
     } finally {
       setAuthBusy(false);
     }
@@ -408,6 +431,25 @@ function App() {
     } finally {
       setAuthBusy(false);
     }
+  }
+
+  async function authTelegramWithRetry(initData) {
+    let lastError;
+    const retryDelaysMs = [0, 1500, 3500, 7000];
+    for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+      if (retryDelaysMs[attempt] > 0) {
+        await wait(retryDelaysMs[attempt]);
+      }
+      try {
+        return await api.authTelegram(getTelegramInitData() || initData);
+      } catch (error) {
+        lastError = error;
+        if (!isTransientTelegramBootstrapError(error) || attempt === retryDelaysMs.length - 1) {
+          throw error;
+        }
+      }
+    }
+    throw lastError || new Error("Telegram sign-in failed");
   }
 
   async function handleEmailLink() {
@@ -517,7 +559,7 @@ function App() {
     setPortfolios([]);
     setPortfolioId("");
     setMetrics(null);
-    setEquity([]);
+    setEquityHistory(null);
     setAiSettings({
       notificationsEnabled: false,
       schedule: "DAILY",
@@ -682,6 +724,43 @@ function App() {
     );
   }
 
+  if (dataBusy) {
+    return (
+      <div className="app-shell">
+        <div className="app">
+          <AppHeader
+            middle={(
+              <TopMenuBar
+                embedded
+                hasPortfolio={Boolean(selectedPortfolio)}
+                onAddPosition={() => setModal("position")}
+                onAddTransaction={() => setModal("transaction")}
+                onOpenPortfolioSwitch={() => setModal("switch-portfolio")}
+                selectedPortfolioName={selectedPortfolio?.name || ""}
+                visible
+              />
+            )}
+            onAccount={() => setModal("account")}
+            onLogout={logout}
+            showLogout={showLogout}
+          />
+
+          {error ? <div className="error">{error}</div> : null}
+
+          <div className="app-loading-screen" role="status" aria-live="polite">
+            <div className="app-loading-screen-card">
+              <div className="app-loading-spinner app-loading-spinner-large" />
+              <div className="app-loading-copy">
+                <strong>Loading portfolio data</strong>
+                <span>Fetching portfolios, prices, transactions, and analytics.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <div className="app">
@@ -712,16 +791,6 @@ function App() {
         />
 
         {error ? <div className="error">{error}</div> : null}
-
-        {dataBusy ? (
-          <div className="app-loading-overlay" role="status" aria-live="polite">
-            <div className="app-loading-spinner" />
-            <div className="app-loading-copy">
-              <strong>Loading portfolio data</strong>
-              <span>Fetching portfolios, prices, transactions, and analytics.</span>
-            </div>
-          </div>
-        ) : null}
 
         <TabNav
           onChange={setTab}

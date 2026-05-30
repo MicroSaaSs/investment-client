@@ -104,7 +104,7 @@ export function getPositionSummaryMetricConfig(id, position) {
       label: "Price",
       summary: money(position.price, 2),
       detailValue: money(position.price, 2),
-      detailMetaNode: <SourceBadge source={position.priceSource} />,
+      detailMetaNode: <SourceBadge source={position.priceSource} type={position.type} />,
     },
     peakPrice: {
       id: "peakPrice",
@@ -184,9 +184,9 @@ function SignalPill({ signal }) {
   return <span className={`signal-pill signal-${normalized}`}>{signal || "HOLD"}</span>;
 }
 
-function SourceBadge({ source }) {
+function SourceBadge({ source, type }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
-  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
+  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source, type)}</span>;
 }
 
 function ActionButton({ label, title, danger = false, onClick, icon }) {
@@ -564,7 +564,7 @@ export function MobilePositionCard({
                   <div className="mobile-position-card-stat-lines mobile-position-card-stat-lines-price">
                     <div className="mobile-position-card-price-row">
                       <strong>{money(position.price, 2)}</strong>
-                      <small><SourceBadge source={position.priceSource} /></small>
+                      <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                     </div>
                     <strong>Peak {money(position.peak, 2)}</strong>
                   </div>

@@ -2796,6 +2796,27 @@ tbody td > small {
   backdrop-filter: blur(10px);
 }
 
+.app-loading-screen {
+  min-height: min(58vh, 620px);
+  display: grid;
+  place-items: center;
+  padding: 28px 0 12px;
+}
+
+.app-loading-screen-card {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 28px 24px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(189, 205, 229, 0.9);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
 .app-loading-spinner {
   width: 18px;
   height: 18px;
@@ -2804,6 +2825,12 @@ tbody td > small {
   border-top-color: var(--accent);
   animation: app-loading-spin 0.8s linear infinite;
   flex: 0 0 auto;
+}
+
+.app-loading-spinner-large {
+  width: 40px;
+  height: 40px;
+  border-width: 3px;
 }
 
 .app-loading-copy {
@@ -3282,6 +3309,15 @@ tbody td > small {
     display: grid;
     gap: 12px;
     margin-top: 10px;
+  }
+  .app-loading-screen {
+    min-height: calc(100vh - 180px);
+    padding: 24px 0 8px;
+  }
+  .app-loading-screen-card {
+    width: 100%;
+    padding: 24px 18px;
+    border-radius: 24px;
   }
   .mobile-card {
     display: grid;

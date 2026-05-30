@@ -11,9 +11,9 @@ function SignalBadge({ signal }) {
   return <span className={`signal-pill signal-${normalized.toLowerCase()}`}>{normalized}</span>;
 }
 
-function SourceBadge({ source }) {
+function SourceBadge({ source, type }) {
   const normalized = (source || "UNAVAILABLE").toLowerCase();
-  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source)}</span>;
+  return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source, type)}</span>;
 }
 
 function isCashPosition(position) {
@@ -112,7 +112,7 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
                 <span>Price</span>
                 <div className="position-detail-price-line">
                   <strong>{money(position.price, 2)}</strong>
-                  <small><SourceBadge source={position.priceSource} /></small>
+                  <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                 </div>
                 <strong className="position-detail-secondary-value">Peak {money(position.peak, 2)}</strong>
               </div>
