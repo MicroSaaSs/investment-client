@@ -76,7 +76,8 @@ export const api = {
   getWorkspace: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/workspace?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
   getMetrics: (id) => request(`/api/portfolios/${id}/metrics`),
   getNews: (id, ticker = "all", period = "7d") => request(`/api/portfolios/${id}/news?ticker=${encodeURIComponent(ticker)}&period=${encodeURIComponent(period)}`),
-  getEquityCurve: (id, range = "month", mode = "daily") => request(`/api/portfolios/${id}/equity-history?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`),
+  getEquityCurve: (id, range = "month", mode = "daily", options = {}) =>
+    request(`/api/portfolios/${id}/equity-history?range=${encodeURIComponent(range)}&mode=${encodeURIComponent(mode)}`, options),
   getPositions: (id) => request(`/api/portfolios/${id}/positions`),
   createPosition: (id, payload) => request(`/api/portfolios/${id}/positions`, {method: "POST", body: JSON.stringify(payload)}),
   createPositionWithAdjustments: (id, payload, allocationAdjustments = []) =>

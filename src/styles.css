@@ -1410,6 +1410,9 @@ button {
 .chart-panel {
   padding-bottom: 12px;
 }
+.chart-panel-body {
+  position: relative;
+}
 .chart-panel .recharts-cartesian-axis-tick-value {
   fill: #6a7b97;
   font-size: 11px;
@@ -1451,6 +1454,29 @@ button {
 }
 .chart-panel .recharts-tooltip-wrapper {
   outline: none;
+}
+.chart-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(245, 249, 255, 0.54);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.chart-loading-card {
+  min-width: min(260px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(189, 205, 229, 0.9);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
 }
 .chart-tooltip {
   display: grid;

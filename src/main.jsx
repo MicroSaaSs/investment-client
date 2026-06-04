@@ -161,6 +161,7 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [equityHistory, setEquityHistory] = useState(null);
+  const [equityHistoryBusy, setEquityHistoryBusy] = useState(false);
   const [news, setNews] = useState(null);
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsFilters, setNewsFilters] = useState({ticker: "all", period: "7d"});
@@ -184,6 +185,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [linkSession, setLinkSession] = useState(null);
   const telegramAutoLoginAttempted = useRef(false);
+  const equityHistoryRequestRef = useRef({controller: null, key: ""});
   const isAuthenticated = Boolean(api.getToken());
   const telegramInitData = getTelegramInitData();
   const isTelegramMiniApp = Boolean(telegramInitData);
@@ -196,6 +198,10 @@ function App() {
       : Boolean(aiPortfolioInvestedById[selectedAiPortfolioId]))
     : false;
   const showLogout = !isTelegramMiniApp && Boolean(currentUser);
+
+  function isAbortError(error) {
+    return error?.name === "AbortError";
+  }
 
   useEffect(() => {
     async function boot() {
@@ -283,7 +289,9 @@ function App() {
     setNews(null);
     setNewsFilters({ticker: "all", period: "7d"});
     refreshPortfolioBaseData(portfolioId).catch((e) => setError(String(e.message || e)));
-    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => setError(String(e.message || e)));
+    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => {
+      if (!isAbortError(e)) setError(String(e.message || e));
+    });
   }, [portfolioId]);
 
   useEffect(() => {
@@ -297,7 +305,9 @@ function App() {
 
   useEffect(() => {
     if (!portfolioId) return;
-    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => setError(String(e.message || e)));
+    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((e) => {
+      if (!isAbortError(e)) setError(String(e.message || e));
+    });
   }, [equityRange, equityMode]);
 
   useEffect(() => {
@@ -379,10 +389,31 @@ function App() {
 
   async function refreshEquityHistory(id = portfolioId, range = equityRange, mode = equityMode) {
     if (!id) return;
-    const history = await api.getEquityCurve(id, range, mode);
-    startTransition(() => {
-      setEquityHistory(history || null);
-    });
+    const requestKey = `${id}:${range}:${mode}`;
+    if (equityHistoryRequestRef.current.controller) {
+      equityHistoryRequestRef.current.controller.abort();
+    }
+    const controller = new AbortController();
+    equityHistoryRequestRef.current = {controller, key: requestKey};
+    setEquityHistoryBusy(true);
+    try {
+      const history = await api.getEquityCurve(id, range, mode, {signal: controller.signal});
+      if (equityHistoryRequestRef.current.key !== requestKey) {
+        return;
+      }
+      startTransition(() => {
+        setEquityHistory(history || null);
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      throw error;
+    } finally {
+      if (equityHistoryRequestRef.current.key === requestKey) {
+        setEquityHistoryBusy(false);
+      }
+    }
   }
 
   async function refreshNews(id = portfolioId, options = {}) {
@@ -887,6 +918,7 @@ function App() {
         {portfolios.length && tab === "dashboard" ? (
           <DashboardView
             equityHistory={equityHistory}
+            equityHistoryBusy={equityHistoryBusy}
             equityMode={equityMode}
             equityRange={equityRange}
             metrics={metrics}

@@ -1,6 +1,6 @@
 import React from "react";
 import {Cell, Pie, PieChart, ResponsiveContainer, Tooltip} from "recharts";
-import {compactMoney, money, pct} from "../utils/format";
+import {compactMoney, money, pct, pctPlain} from "../utils/format";
 import {MetricDetailsModal} from "./MetricDetailsModal";
 
 const ALLOCATION_COLORS = ["#4f83bf", "#c3504c", "#9dbc59", "#8366aa", "#4ea7c1", "#fe9640", "#7ea1cc", "#d48383"];
@@ -59,7 +59,7 @@ function formatEquityTick(day, compact) {
   return normalized.length >= 10 ? normalized.slice(5) : normalized;
 }
 
-function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, chartWidth, compact}) {
+function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, chartWidth, compact, planPct}) {
   if (!name || !percent || percent <= 0) return null;
   const RADIAN = Math.PI / 180;
   const sin = Math.sin(-RADIAN * midAngle);
@@ -78,19 +78,23 @@ function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, cha
   const textX = compact
     ? (cos >= 0 ? Math.min(chartWidth - sidePadding, ex + 4) : Math.max(sidePadding, ex + 4))
     : rawTextX;
+  const currentPctLabel = `${(percent * 100).toFixed(1)}%`;
+  const allocationLabel = Number.isFinite(Number(planPct))
+    ? `${currentPctLabel} [${pctPlain(Number(planPct), Number(planPct) % 1 === 0 ? 0 : 1)}]`
+    : currentPctLabel;
   return (
     <g>
       <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9aaccc" fill="none" />
       <circle cx={sx} cy={sy} r={2} fill="#9aaccc" />
       <text x={textX} y={ey} textAnchor={textAnchor} fill="#52658a">
         <tspan x={textX} dy="0" fontSize={12} fontWeight={600}>{name}</tspan>
-        <tspan x={textX} dy="15" fontSize={12}>{`${(percent * 100).toFixed(1)}%`}</tspan>
+        <tspan x={textX} dy="15" fontSize={12}>{allocationLabel}</tspan>
       </text>
     </g>
   );
 }
 
-function AllocationPie({items}) {
+function AllocationPie({items, showPlanPct = false}) {
   const [compactLabels, setCompactLabels] = React.useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 640px)").matches;
@@ -108,6 +112,7 @@ function AllocationPie({items}) {
     ...props,
     chartWidth: compactLabels ? 300 : 360,
     compact: compactLabels,
+    planPct: showPlanPct ? props.payload?.planPct : null,
   });
   return (
     <ResponsiveContainer width="100%" height={compactLabels ? 320 : 360}>
@@ -429,7 +434,15 @@ const CapitalCurveChart = React.memo(function CapitalCurveChart({
   );
 });
 
-export function DashboardView({metrics, equityHistory, equityRange, equityMode, onEquityRangeChange, onEquityModeChange}) {
+export function DashboardView({
+  metrics,
+  equityHistory,
+  equityHistoryBusy,
+  equityRange,
+  equityMode,
+  onEquityRangeChange,
+  onEquityModeChange,
+}) {
   const [detailModal, setDetailModal] = React.useState(null);
   const rawEquityPoints = React.useMemo(() => normalizeEquityPoints(equityHistory?.points || []), [equityHistory?.points]);
   const latestPnl = Number(equityHistory?.totalPnl ?? metrics?.pnl ?? 0);
@@ -454,6 +467,7 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
     () => activePositions.filter((position) => position.current > 0).map((position) => ({
       name: position.ticker,
       value: position.current,
+      planPct: Number(position.target ?? position.targetAllocationPct ?? 0),
     })),
     [activePositions]
   );
@@ -497,10 +511,23 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
             </select>
           </div>
         </div>
-        <CapitalCurveChart
-          points={rawEquityPoints}
-          capitalStroke={capitalStroke}
-        />
+        <div className="chart-panel-body">
+          <CapitalCurveChart
+            points={rawEquityPoints}
+            capitalStroke={capitalStroke}
+          />
+          {equityHistoryBusy ? (
+            <div className="chart-loading-overlay" role="status" aria-live="polite" aria-label="Loading capital curve">
+              <div className="chart-loading-card">
+                <div className="app-loading-spinner app-loading-spinner-large" />
+                <div className="app-loading-copy">
+                  <strong>Updating chart</strong>
+                  <span>Refreshing equity history for this range.</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </section>
       <div className="allocation-pie-grid">
         <section className="panel allocation-pie-panel">
@@ -525,7 +552,7 @@ export function DashboardView({metrics, equityHistory, equityRange, equityMode, 
           </div>
           <div className="allocation-pie-layout">
             <div className="allocation-pie-chart">
-              <AllocationPie items={currentAllocation} />
+              <AllocationPie items={currentAllocation} showPlanPct />
             </div>
           </div>
         </section>
