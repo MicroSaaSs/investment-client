@@ -209,13 +209,24 @@ function App() {
       try {
         window.Telegram?.WebApp?.ready?.();
         if (api.getToken()) {
-          const user = await api.getCurrentUser();
-          setCurrentUser(user);
-          await loadPortfolios();
-        } else if (telegramInitData && !telegramAutoLoginAttempted.current) {
+          try {
+            const user = await api.getCurrentUser();
+            setCurrentUser(user);
+            await loadPortfolios();
+            return;
+          } catch (tokenError) {
+            api.setToken("");
+            setCurrentUser(null);
+            if (!telegramInitData) {
+              throw tokenError;
+            }
+          }
+        }
+        if (telegramInitData && !telegramAutoLoginAttempted.current) {
           telegramAutoLoginAttempted.current = true;
           const authResponse = await authTelegramWithRetry(telegramInitData);
           setCurrentUser(authResponse);
+          setError("");
           await loadPortfolios();
         }
       } catch (e) {

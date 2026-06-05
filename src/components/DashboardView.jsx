@@ -79,16 +79,19 @@ function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, cha
     ? (cos >= 0 ? Math.min(chartWidth - sidePadding, ex + 4) : Math.max(sidePadding, ex + 4))
     : rawTextX;
   const currentPctLabel = `${(percent * 100).toFixed(1)}%`;
-  const allocationLabel = Number.isFinite(Number(planPct))
-    ? `${currentPctLabel} [${pctPlain(Number(planPct), Number(planPct) % 1 === 0 ? 0 : 1)}]`
-    : currentPctLabel;
+  const hasPlanPct = planPct !== null && planPct !== undefined && Number.isFinite(Number(planPct));
+  const planLabel = hasPlanPct
+    ? `[${pctPlain(Number(planPct), Number(planPct) % 1 === 0 ? 0 : 1)}]`
+    : null;
   return (
     <g>
       <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9aaccc" fill="none" />
       <circle cx={sx} cy={sy} r={2} fill="#9aaccc" />
       <text x={textX} y={ey} textAnchor={textAnchor} fill="#52658a">
         <tspan x={textX} dy="0" fontSize={12} fontWeight={600}>{name}</tspan>
-        <tspan x={textX} dy="15" fontSize={12}>{allocationLabel}</tspan>
+        <tspan x={textX} dy="15" fontSize={12}>{currentPctLabel}</tspan>
+        {compact && planLabel ? <tspan x={textX} dy="13" fontSize={11}>{planLabel}</tspan> : null}
+        {!compact && planLabel ? <tspan dx="5" fontSize={12}>{planLabel}</tspan> : null}
       </text>
     </g>
   );

@@ -2419,6 +2419,24 @@ tbody td > small {
   background: #fbfdff;
   color: var(--ink);
 }
+.modal-form input[type="date"] {
+  text-align: left;
+  line-height: 1.2;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.modal-form input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+.modal-form input[type="date"]::-webkit-datetime-edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.2em;
+  padding: 0;
+}
+.modal-form input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
 .auth-password-wrap {
   position: relative;
 }
