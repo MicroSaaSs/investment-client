@@ -21,6 +21,13 @@ function averagePrice(position) {
 }
 
 function ValueBlock({ position }) {
+  if (isCashPosition(position)) {
+    return (
+      <div className="table-dual-value">
+        <span>Balance · {money(position.current, 0)}</span>
+      </div>
+    );
+  }
   return (
     <div className="table-dual-value">
       <span>Invest · {money(position.invested, 0)}</span>
@@ -60,7 +67,32 @@ function transactionSummary(transaction) {
   return parts.join(" · ");
 }
 
+function autoCashTransferLabel(transaction) {
+  const note = String(transaction.note || "").trim();
+  if (!note.startsWith("AUTO_CASH_TRANSFER:")) return "";
+  const [, action = "", ticker = ""] = note.split(":");
+  const normalizedTicker = ticker.trim().toUpperCase();
+  switch (action) {
+    case "BUY":
+      return normalizedTicker ? `Buy ${normalizedTicker} from CASH bucket` : "Buy from CASH bucket";
+    case "SELL":
+      return normalizedTicker ? `Sell ${normalizedTicker} to CASH bucket` : "Sell to CASH bucket";
+    case "DIVIDEND":
+      return normalizedTicker ? `${normalizedTicker} dividend to CASH bucket` : "Dividend to CASH bucket";
+    case "FEE":
+      return normalizedTicker ? `${normalizedTicker} fee from CASH bucket` : "Fee from CASH bucket";
+    default:
+      return "CASH bucket transfer";
+  }
+}
+
+function isAutoCashTransferTransaction(transaction) {
+  return String(transaction?.note || "").trim().startsWith("AUTO_CASH_TRANSFER:");
+}
+
 function transactionTypeLabel(transaction) {
+  const autoCashLabel = autoCashTransferLabel(transaction);
+  if (autoCashLabel) return autoCashLabel;
   const type = String(transaction.type || "").trim().toUpperCase();
   return ({
     DEPOSIT: "Deposit",
@@ -93,6 +125,10 @@ function isCashPosition(position) {
   return position?.type === "CASH";
 }
 
+function portfolioHint(item) {
+  return String(item?.portfolioName || "").trim();
+}
+
 function valueOnlyPlaceholder(position, value) {
   return isCashPosition(position) ? "--" : value;
 }
@@ -111,9 +147,11 @@ const HOLDINGS_METRIC_COLUMNS = [
 ];
 
 export function PositionsView({
+  activeSubtab = "positions",
   mobilePositionSummaryMetrics,
   onMobilePositionSummaryMetricsChange,
   onReorderPositions,
+  onSubtabChange,
   positions,
   transactions,
   onAddTransaction,
@@ -124,7 +162,6 @@ export function PositionsView({
 }) {
   const dragPositionIdRef = React.useRef(null);
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
-  const [activeTab, setActiveTab] = React.useState("positions");
   const [showColumnsPicker, setShowColumnsPicker] = React.useState(false);
   const [dragPositionId, setDragPositionId] = React.useState(null);
   const [draftOrderIds, setDraftOrderIds] = React.useState(() => buildManualOrderIds(positions));
@@ -134,6 +171,13 @@ export function PositionsView({
   const [visibleColumns, setVisibleColumns] = React.useState(() => new Set(HOLDINGS_METRIC_COLUMNS.map((column) => column.id)));
   const summaryMetricIds = normalizePositionSummaryMetricIds(mobilePositionSummaryMetrics);
   const sortedPositions = sortPositions(positions);
+  const selectedPortfolioContextIds = new Set(
+    (positions || [])
+      .map((position) => position?.portfolioContextId || position?.portfolioId)
+      .filter(Boolean)
+  );
+  const multiPortfolioView = selectedPortfolioContextIds.size > 1;
+  const canReorderPositions = Boolean(onReorderPositions && !multiPortfolioView);
   const isColumnVisible = React.useCallback((columnId) => visibleColumns.has(columnId), [visibleColumns]);
   const positionsById = React.useMemo(() => {
     const map = new Map();
@@ -147,6 +191,10 @@ export function PositionsView({
     const missing = sortedPositions.filter((position) => !draftOrderIds.includes(position.id));
     return [...picked, ...missing];
   }, [draftOrderIds, positionsById, sortedPositions]);
+  const visibleTransactions = React.useMemo(
+    () => (transactions || []).filter((transaction) => !isAutoCashTransferTransaction(transaction)),
+    [transactions]
+  );
 
   const toggleColumn = React.useCallback((columnId) => {
     setVisibleColumns((current) => {
@@ -161,12 +209,13 @@ export function PositionsView({
   }, []);
 
   async function applyManualOrder() {
-    if (!onReorderPositions) return;
+    if (!canReorderPositions) return;
     await onReorderPositions(draftOrderedPositions.map((position) => position.id));
     setShowColumnsPicker(false);
   }
 
   async function handleDropOnPosition(targetPositionId, sourcePositionId = null, placement = "after") {
+    if (!canReorderPositions) return;
     const movingId = sourcePositionId || dragPositionIdRef.current || dragPositionId;
     if (!movingId || !targetPositionId || movingId === targetPositionId) return;
     const orderIds = sortedPositions.map((position) => position.id);
@@ -180,11 +229,14 @@ export function PositionsView({
   }
 
   async function movePositionByStep(positionId, direction) {
+    if (!canReorderPositions) return;
     const orderIds = sortedPositions.map((position) => position.id);
     const nextOrderIds = moveManualOrderItem(orderIds, positionId, direction);
     if (nextOrderIds.join(",") === orderIds.join(",")) return;
     await onReorderPositions?.(nextOrderIds);
   }
+
+  const activeTab = activeSubtab;
 
   return (
     <div className="positions-layout">
@@ -196,7 +248,7 @@ export function PositionsView({
                 <button
                   aria-selected={activeTab === "positions"}
                   className={`panel-subtab panel-subtab-with-control ${activeTab === "positions" ? "active" : ""}`}
-                  onClick={() => setActiveTab("positions")}
+                  onClick={() => onSubtabChange?.("positions")}
                   role="tab"
                   type="button"
                 >
@@ -206,7 +258,7 @@ export function PositionsView({
                 <PositionSummaryMetricControl
                   className="panel-subtab-control panel-subtab-control-mobile-only"
                   onChange={onMobilePositionSummaryMetricsChange}
-                  onReorderPositions={onReorderPositions}
+                  onReorderPositions={canReorderPositions ? onReorderPositions : null}
                   positions={positions}
                   selectedMetricIds={summaryMetricIds}
                 />
@@ -228,7 +280,7 @@ export function PositionsView({
               <button
                 aria-selected={activeTab === "transactions"}
                 className={`panel-subtab ${activeTab === "transactions" ? "active" : ""}`}
-                onClick={() => setActiveTab("transactions")}
+                onClick={() => onSubtabChange?.("transactions")}
                 role="tab"
                 type="button"
               >
@@ -253,6 +305,7 @@ export function PositionsView({
             className="holdings-columns-sheet"
           >
             <div className="holdings-columns-layout" role="dialog" aria-label="Holdings column picker">
+              {canReorderPositions ? (
               <div className="holdings-order-section">
                 <span>Position order (manual)</span>
                 <div className="position-order-list">
@@ -306,6 +359,7 @@ export function PositionsView({
                 </div>
                 <button className="action-button action-button-secondary" onClick={applyManualOrder} type="button">Apply order</button>
               </div>
+              ) : null}
               <div className="holdings-columns-picker">
                 {HOLDINGS_METRIC_COLUMNS.map((column) => (
                   <label className="holdings-columns-option" key={column.id}>
@@ -343,8 +397,9 @@ export function PositionsView({
             <tbody>
               {sortedPositions.map((position) => (
                 <tr
-                  draggable
-                  key={position.id}
+                  draggable={canReorderPositions}
+                  key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`}
+                  title={portfolioHint(position) ? `Portfolio: ${portfolioHint(position)}` : undefined}
                   onDragEnd={() => {
                     setDragPositionId(null);
                     dragPositionIdRef.current = null;
@@ -355,6 +410,7 @@ export function PositionsView({
                     setDropTargetId(position.id);
                   }}
                   onDragStart={(event) => {
+                    if (!canReorderPositions) return;
                     setDragPositionId(position.id);
                     dragPositionIdRef.current = position.id;
                     event.dataTransfer.effectAllowed = "move";
@@ -364,7 +420,7 @@ export function PositionsView({
                   onDrop={async (event) => {
                     event.preventDefault();
                     const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
-                    if (!sourceId) return;
+                    if (!canReorderPositions || !sourceId) return;
                     const rect = event.currentTarget.getBoundingClientRect();
                     const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
                     await handleDropOnPosition(position.id, sourceId, placement);
@@ -462,11 +518,12 @@ export function PositionsView({
           {sortedPositions.map((position) => (
             <MobilePositionCard
               compactStyle="inline"
-              draggable
+              draggable={canReorderPositions}
               expanded={expandedMobileCard === position.id}
-              key={position.id}
+              key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`}
               onDragOver={(event) => event.preventDefault()}
               onDragStart={(event) => {
+                if (!canReorderPositions) return;
                 setDragPositionId(position.id);
                 dragPositionIdRef.current = position.id;
                 event.dataTransfer.effectAllowed = "move";
@@ -480,22 +537,25 @@ export function PositionsView({
               onDrop={async (event) => {
                 event.preventDefault();
                 const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
-                if (!sourceId) return;
+                if (!canReorderPositions || !sourceId) return;
                 const rect = event.currentTarget.getBoundingClientRect();
                 const placement = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
                 await handleDropOnPosition(position.id, sourceId, placement);
               }}
-              onDragOverCapture={() => setDropTargetId(position.id)}
+              onDragOverCapture={() => {
+                if (canReorderPositions) setDropTargetId(position.id);
+              }}
               onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
               onAddTransaction={onAddTransaction}
               onDelete={onDeletePosition}
               onEdit={onEditPosition}
-              canMoveUp={sortedPositions.findIndex((item) => item.id === position.id) > 0}
-              canMoveDown={sortedPositions.findIndex((item) => item.id === position.id) < sortedPositions.length - 1}
+              canMoveUp={canReorderPositions && sortedPositions.findIndex((item) => item.id === position.id) > 0}
+              canMoveDown={canReorderPositions && sortedPositions.findIndex((item) => item.id === position.id) < sortedPositions.length - 1}
               onMoveUp={() => movePositionByStep(position.id, "up")}
               onMoveDown={() => movePositionByStep(position.id, "down")}
               onToggle={() => setExpandedMobileCard((current) => current === position.id ? null : position.id)}
               position={position}
+              portfolioName={portfolioHint(position)}
               summaryMetricIds={summaryMetricIds}
               dropTarget={dropTargetId === position.id}
             />
@@ -518,8 +578,8 @@ export function PositionsView({
               </tr>
             </thead>
             <tbody>
-              {transactions.map((transaction) => (
-                <tr key={transaction.id}>
+              {visibleTransactions.map((transaction) => (
+                <tr key={`${transaction.portfolioContextId || transaction.portfolioId || "portfolio"}:${transaction.id}`} title={portfolioHint(transaction) ? `Portfolio: ${portfolioHint(transaction)}` : undefined}>
                   <td><strong>{transaction.date}</strong></td>
                   <td>{transaction.ticker}</td>
                   <td>{transactionTypeLabel(transaction)}</td>
@@ -538,11 +598,12 @@ export function PositionsView({
           </table>
         </div>
         <div className="mobile-list">
-          {transactions.map((transaction) => (
-            <article className="mobile-card mobile-card-transaction" key={transaction.id}>
+          {visibleTransactions.map((transaction) => (
+            <article className="mobile-card mobile-card-transaction" key={`${transaction.portfolioContextId || transaction.portfolioId || "portfolio"}:${transaction.id}`}>
               <div className="mobile-card-top">
-                <div>
+                <div className="mobile-transaction-title-block">
                   <strong>{transaction.ticker}</strong>
+                  {portfolioHint(transaction) ? <span className="portfolio-row-hint mobile-portfolio-row-hint">{portfolioHint(transaction)}</span> : null}
                 </div>
                 <span className="signal-pill signal-hold">{transactionTypeLabel(transaction)}</span>
               </div>

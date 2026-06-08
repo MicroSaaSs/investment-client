@@ -4,13 +4,14 @@ import { TrashIcon } from "./icons/TrashIcon";
 export function PortfolioBar({
   portfolios,
   portfolioId,
+  selectedPortfolioIds,
   onSelect,
   onCreate,
   onRename,
   onDelete,
 }) {
-  const selected = portfolios.find((portfolio) => portfolio.id === portfolioId);
   const [draftName, setDraftName] = React.useState("");
+  const selectedIdSet = React.useMemo(() => new Set(selectedPortfolioIds || []), [selectedPortfolioIds]);
 
   function submitCreate() {
     const name = draftName.trim();
@@ -52,9 +53,12 @@ export function PortfolioBar({
         </div>
         <div className="portfolio-chip-row">
           {portfolios.map((portfolio) => (
-            <div className={`portfolio-list-item ${portfolio.id === portfolioId ? "active" : ""}`} key={portfolio.id}>
+            <div
+              className={`portfolio-list-item ${selectedIdSet.has(portfolio.id) ? "active" : ""}`}
+              key={portfolio.id}
+            >
               <button
-                className={`portfolio-chip ${portfolio.id === portfolioId ? "active" : ""}`}
+                className={`portfolio-chip ${selectedIdSet.has(portfolio.id) ? "active" : ""} ${portfolio.id === portfolioId ? "current" : ""}`}
                 onClick={() => onSelect(portfolio.id)}
                 type="button"
               >

@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
 
 const AMOUNT_TRANSACTION_TYPES = new Set(["DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"]);
@@ -38,10 +38,11 @@ function buildForm(transaction, positions, today) {
     : "";
   const cashBuckets = positions.filter((position) => position.type === "CASH");
   if (!transaction) {
+    const defaultPosition = positions[0] || null;
     return {
-      ticker: positions[0]?.ticker || "",
+      ticker: defaultPosition?.ticker || "",
       shares: "",
-      price: "",
+      price: isCashTxn ? "" : defaultPriceForPosition(defaultPosition),
       fees: "",
       amount: "",
       date: today,
@@ -50,6 +51,7 @@ function buildForm(transaction, positions, today) {
       cashBucketId: cashBuckets[0]?.id || "",
     };
   }
+  const linkedCashTransfer = transaction.cashTransfer || null;
   return {
     ticker: transaction.ticker || positions[0]?.ticker || "",
     shares: isCashTxn || isAmountType ? "" : String(transaction.shares ?? ""),
@@ -58,24 +60,119 @@ function buildForm(transaction, positions, today) {
     amount: isCashTxn || isAmountType ? String(cashAmount || "") : "",
     date: transaction.date || today,
     type: normalizedType,
-    useCashTransfer: false,
-    cashBucketId: cashBuckets[0]?.id || "",
+    useCashTransfer: Boolean(linkedCashTransfer),
+    cashBucketId: linkedCashTransfer?.positionId || cashBuckets.find((position) => position.ticker === linkedCashTransfer?.ticker)?.id || cashBuckets[0]?.id || "",
   };
 }
 
-export function TransactionModal({mode = "create", positions, transaction, onClose, onSubmit}) {
+function defaultPriceForPosition(position) {
+  const value = position?.lastMarketPrice ?? position?.price ?? "";
+  return value === "" || value == null ? "" : String(value);
+}
+
+function isCashBucketPosition(position) {
+  return position?.type === "CASH";
+}
+
+function autoCashTransferNote(type, ticker) {
+  const normalizedTicker = String(ticker || "").trim().toUpperCase();
+  return `AUTO_CASH_TRANSFER:${type}:${normalizedTicker}`;
+}
+
+function amountFromTransaction(transaction) {
+  const shares = Math.max(Number(transaction?.shares || 0), 0);
+  const price = Math.max(Number(transaction?.price || 0), 0);
+  if (shares > 0 && price > 0) return shares * price;
+  if (shares > 0) return shares;
+  return price;
+}
+
+export function TransactionModal({
+  mode = "create",
+  positions,
+  transaction,
+  onClose,
+  onSubmit,
+  portfolioOptions = [],
+  positionsByPortfolio = null,
+  defaultPortfolioId = "",
+  portfolioLocked = false,
+}) {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [form, setForm] = useState(buildForm(transaction, positions, today));
-  const selectedPosition = positions.find((position) => position.ticker === form.ticker);
-  const isCashPosition = selectedPosition?.type === "CASH" || selectedPosition?.type === "CASH_ETF";
+  const showPortfolioSelector = portfolioOptions.length > 0;
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState(transaction?.portfolioId || transaction?.portfolioContextId || defaultPortfolioId || portfolioOptions[0]?.id || "");
+  const scopedPositions = useMemo(() => {
+    if (!positionsByPortfolio) return positions;
+    return positionsByPortfolio[selectedPortfolioId] || [];
+  }, [positions, positionsByPortfolio, selectedPortfolioId]);
+  const [form, setForm] = useState(buildForm(transaction, scopedPositions, today));
+  const selectedPosition = scopedPositions.find((position) => position.ticker === form.ticker);
+  const isCashPosition = isCashBucketPosition(selectedPosition);
   const normalizedType = normalizeTransactionType(form.type, isCashPosition);
   const isAmountType = AMOUNT_TRANSACTION_TYPES.has(normalizedType);
-  const cashBuckets = positions.filter((position) => position.type === "CASH");
-  const canUseCashTransfer = mode === "create" && !isCashPosition && cashBuckets.length > 0;
+  const cashBuckets = scopedPositions.filter((position) => position.type === "CASH");
+  const canUseCashTransfer = !isCashPosition && cashBuckets.length > 0;
   const canUseCashBucket = canUseCashTransfer && ["BUY", "SELL", "DIVIDEND", "FEE"].includes(normalizedType);
+
+  useEffect(() => {
+    const fallbackPortfolioId = transaction?.portfolioId || transaction?.portfolioContextId || defaultPortfolioId || portfolioOptions[0]?.id || "";
+    if (!fallbackPortfolioId) return;
+    setSelectedPortfolioId((current) => {
+      if (current && portfolioOptions.some((portfolio) => portfolio.id === current)) return current;
+      return fallbackPortfolioId;
+    });
+  }, [defaultPortfolioId, portfolioOptions, transaction?.portfolioContextId, transaction?.portfolioId]);
+
+  useEffect(() => {
+    if (!scopedPositions.length) return;
+    setForm((current) => {
+      const nextTicker = scopedPositions.some((position) => position.ticker === current.ticker)
+        ? current.ticker
+        : (transaction?.ticker && scopedPositions.some((position) => position.ticker === transaction.ticker)
+          ? transaction.ticker
+          : scopedPositions[0]?.ticker || "");
+      const nextPosition = scopedPositions.find((position) => position.ticker === nextTicker) || scopedPositions[0];
+      const nextIsCash = isCashBucketPosition(nextPosition);
+      const nextType = normalizeTransactionType(current.type, nextIsCash);
+      const nextIsAmountType = AMOUNT_TRANSACTION_TYPES.has(nextType);
+      const nextCashBuckets = scopedPositions.filter((position) => position.type === "CASH");
+      return {
+        ...current,
+        ticker: nextTicker,
+        type: nextType,
+        cashBucketId: nextCashBuckets.find((position) => position.id === current.cashBucketId)?.id || nextCashBuckets[0]?.id || "",
+        price: nextIsCash || nextIsAmountType ? "" : (current.ticker === nextTicker && current.price !== "" ? current.price : defaultPriceForPosition(nextPosition)),
+        shares: nextIsCash || nextIsAmountType ? "" : current.shares,
+        fees: nextIsCash || nextIsAmountType ? "" : current.fees,
+        amount: nextIsCash || nextIsAmountType ? current.amount : "",
+        useCashTransfer: nextIsCash ? false : current.useCashTransfer,
+      };
+    });
+  }, [scopedPositions, transaction?.ticker]);
 
   function update(key, value) {
     setForm((current) => ({...current, [key]: value}));
+  }
+
+  function handlePortfolioChange(nextPortfolioId) {
+    setSelectedPortfolioId(nextPortfolioId);
+  }
+
+  function handleTickerChange(nextTicker) {
+    const nextPosition = scopedPositions.find((position) => position.ticker === nextTicker);
+    const nextIsCash = isCashBucketPosition(nextPosition);
+    const nextType = normalizeTransactionType(form.type, nextIsCash);
+    const nextIsAmountType = AMOUNT_TRANSACTION_TYPES.has(nextType);
+    setForm((current) => ({
+      ...current,
+      ticker: nextTicker,
+      type: nextType,
+      price: nextIsCash || nextIsAmountType ? "" : defaultPriceForPosition(nextPosition),
+      amount: nextIsCash || nextIsAmountType ? current.amount : "",
+      shares: nextIsCash || nextIsAmountType ? "" : current.shares,
+      fees: nextIsCash || nextIsAmountType ? "" : current.fees,
+      useCashTransfer: nextIsCash ? false : current.useCashTransfer,
+    }));
   }
 
   function handleSubmit(event) {
@@ -103,6 +200,7 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
     })();
     onSubmit({
       id: transaction?.id,
+      portfolioId: selectedPortfolioId || defaultPortfolioId,
       ticker: form.ticker.trim().toUpperCase(),
       type: normalizedType,
       date: form.date,
@@ -110,7 +208,11 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
       price,
       fees,
       currency: "USD",
+      originalCashTransferId: transaction?.cashTransfer?.id || null,
       cashTransfer: canUseCashBucket && form.useCashTransfer && selectedCashBucket && cashTransferAmount > 0 ? {
+        id: transaction?.cashTransfer?.id,
+        portfolioId: selectedPortfolioId || defaultPortfolioId,
+        positionId: selectedCashBucket.id,
         ticker: selectedCashBucket.ticker,
         type: normalizedType === "BUY" || normalizedType === "FEE" ? "WITHDRAWAL" : "DEPOSIT",
         date: form.date,
@@ -118,6 +220,7 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
         price: 0,
         fees: 0,
         currency: "USD",
+        note: autoCashTransferNote(normalizedType, form.ticker),
       } : null,
     });
   }
@@ -133,10 +236,20 @@ export function TransactionModal({mode = "create", positions, transaction, onClo
       onClose={onClose}
     >
       <form className="modal-form modal-grid" onSubmit={handleSubmit}>
+        {showPortfolioSelector ? (
+          <label className="modal-actions-wide">
+            <span>Portfolio</span>
+            <select disabled={portfolioLocked} value={selectedPortfolioId} onChange={(e) => handlePortfolioChange(e.target.value)}>
+              {portfolioOptions.map((portfolio) => (
+                <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label>
           <span>Ticker</span>
-          <select value={form.ticker} onChange={(e) => update("ticker", e.target.value)}>
-            {positions.map((position) => <option key={position.id} value={position.ticker}>{position.ticker}</option>)}
+          <select value={form.ticker} onChange={(e) => handleTickerChange(e.target.value)}>
+            {scopedPositions.map((position) => <option key={position.id} value={position.ticker}>{position.ticker}</option>)}
           </select>
         </label>
         <label>

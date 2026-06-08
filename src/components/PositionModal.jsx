@@ -101,11 +101,28 @@ function sanitizeNumericInput(value, {allowNegative = false, allowDecimal = fals
   return `${negative}${unsigned.replace(/^0+(?=\d)/, "") || "0"}`;
 }
 
-export function PositionModal({mode = "create", variant = "position", onClose, onSubmit, position, positions = []}) {
+export function PositionModal({
+  mode = "create",
+  variant = "position",
+  onClose,
+  onSubmit,
+  position,
+  positions = [],
+  portfolioOptions = [],
+  positionsByPortfolio = null,
+  defaultPortfolioId = "",
+  portfolioLocked = false,
+}) {
   const isWatchlist = variant === "watchlist";
+  const showPortfolioSelector = portfolioOptions.length > 0;
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState(position?.portfolioId || position?.portfolioContextId || defaultPortfolioId || portfolioOptions[0]?.id || "");
+  const scopedPositions = useMemo(() => {
+    if (!positionsByPortfolio) return positions;
+    return positionsByPortfolio[selectedPortfolioId] || [];
+  }, [positions, positionsByPortfolio, selectedPortfolioId]);
   const editablePositions = useMemo(
-    () => positions.filter((item) => (item.mode || "ACTIVE") !== "WATCHLIST"),
-    [positions]
+    () => scopedPositions.filter((item) => (item.mode || "ACTIVE") !== "WATCHLIST"),
+    [scopedPositions]
   );
   const [editorMode, setEditorMode] = useState(!isWatchlist && mode === "edit" ? "edit" : "add");
   const [selectedPositionId, setSelectedPositionId] = useState(position?.id || editablePositions[0]?.id || "");
@@ -114,24 +131,36 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
     return editablePositions.find((item) => item.id === selectedPositionId) || null;
   }, [editablePositions, editorMode, isWatchlist, position, selectedPositionId]);
   const [form, setForm] = useState(buildForm(activePosition));
-  const [allocationTargets, setAllocationTargets] = useState(() => buildAllocationTargets(activePosition, positions));
+  const [allocationTargets, setAllocationTargets] = useState(() => buildAllocationTargets(activePosition, scopedPositions));
 
   useEffect(() => {
     setEditorMode(!isWatchlist && mode === "edit" ? "edit" : "add");
   }, [isWatchlist, mode]);
 
   useEffect(() => {
+    const fallbackPortfolioId = position?.portfolioId || position?.portfolioContextId || defaultPortfolioId || portfolioOptions[0]?.id || "";
+    if (!fallbackPortfolioId) return;
+    setSelectedPortfolioId((current) => {
+      if (current && portfolioOptions.some((portfolio) => portfolio.id === current)) return current;
+      return fallbackPortfolioId;
+    });
+  }, [defaultPortfolioId, portfolioOptions, position?.portfolioContextId, position?.portfolioId]);
+
+  useEffect(() => {
     if (position?.id) setSelectedPositionId(position.id);
     else if (!selectedPositionId && editablePositions[0]?.id) setSelectedPositionId(editablePositions[0].id);
-  }, [editablePositions, position?.id, selectedPositionId]);
+    else if (selectedPositionId && !editablePositions.some((item) => item.id === selectedPositionId)) {
+      setSelectedPositionId(editablePositions[0]?.id || "");
+    }
+  }, [editablePositions, position?.id, selectedPositionId, selectedPortfolioId]);
 
   useEffect(() => {
     setForm(buildForm(activePosition));
-    setAllocationTargets(buildAllocationTargets(activePosition, positions));
-  }, [activePosition, positions]);
+    setAllocationTargets(buildAllocationTargets(activePosition, scopedPositions));
+  }, [activePosition, scopedPositions]);
 
   const allocation = useMemo(() => {
-    const otherIncluded = positions.filter((item) => item.id !== activePosition?.id && item.includeInAllocation);
+    const otherIncluded = scopedPositions.filter((item) => item.id !== activePosition?.id && item.includeInAllocation);
     const rows = otherIncluded.map((item) => ({
       id: item.id,
       ticker: item.ticker,
@@ -150,7 +179,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
       remaining,
       valid,
     };
-  }, [activePosition?.id, allocationTargets, form.includeInAllocation, form.targetAllocationPct, positions]);
+  }, [activePosition?.id, allocationTargets, form.includeInAllocation, form.targetAllocationPct, scopedPositions]);
 
   const avgDrawdownValidation = useMemo(() => {
     const period = toNumber(form.avgDrawdownPeriod, 0);
@@ -216,6 +245,7 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
     if (!form.ticker.trim() || (!isWatchlist && !allocation.valid) || !avgDrawdownValidation.valid) return;
     onSubmit({
       id: editorMode === "edit" ? activePosition?.id : position?.id,
+      portfolioId: selectedPortfolioId || defaultPortfolioId,
       ticker: form.ticker.trim().toUpperCase(),
       company: form.company.trim(),
       type: form.type,
@@ -252,6 +282,16 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
               <p className="modal-kicker">Ticker / cash bucket</p>
               <h4>Select holding to edit</h4>
             </div>
+            {showPortfolioSelector ? (
+              <label>
+                <span>Portfolio</span>
+                <select disabled={portfolioLocked} value={selectedPortfolioId} onChange={(e) => setSelectedPortfolioId(e.target.value)}>
+                  {portfolioOptions.map((portfolio) => (
+                    <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label>
               <span>Ticker / cash bucket</span>
               <select value={selectedPositionId} onChange={(e) => setSelectedPositionId(e.target.value)}>
@@ -263,6 +303,27 @@ export function PositionModal({mode = "create", variant = "position", onClose, o
               </select>
             </label>
           </div>
+        ) : null}
+
+        {!isWatchlist && editorMode !== "edit" && showPortfolioSelector ? (
+          <label>
+            <span>Portfolio</span>
+            <select disabled={portfolioLocked} value={selectedPortfolioId} onChange={(e) => setSelectedPortfolioId(e.target.value)}>
+              {portfolioOptions.map((portfolio) => (
+                <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {isWatchlist && showPortfolioSelector ? (
+          <label>
+            <span>Portfolio</span>
+            <select disabled={portfolioLocked} value={selectedPortfolioId} onChange={(e) => setSelectedPortfolioId(e.target.value)}>
+              {portfolioOptions.map((portfolio) => (
+                <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+              ))}
+            </select>
+          </label>
         ) : null}
 
         <div className="modal-section modal-actions-wide">

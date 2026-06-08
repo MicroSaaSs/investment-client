@@ -25,6 +25,7 @@ function NewsItemCard({ item }) {
     <article className="news-card">
       <div className="news-card-meta">
         <span>{item.ticker || item.provider}</span>
+        {item.portfolioName ? <span className="portfolio-row-hint news-portfolio-hint">{item.portfolioName}</span> : null}
         <span>{formatNewsDate(item.publishedAt)}</span>
       </div>
       <h3>{item.headline}</h3>

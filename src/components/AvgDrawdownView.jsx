@@ -2,9 +2,27 @@ import React from "react";
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {money, pct, pctNegative} from "../utils/format";
 
+function portfolioHint(position) {
+  return String(position?.portfolioName || "").trim();
+}
+
 export function AvgDrawdownView({avgDrawdown}) {
+  const tickerCounts = avgDrawdown.reduce((counts, position) => {
+    const ticker = String(position?.ticker || "").toUpperCase();
+    if (!ticker) return counts;
+    counts.set(ticker, (counts.get(ticker) || 0) + 1);
+    return counts;
+  }, new Map());
   const sorted = [...avgDrawdown]
-    .map((position) => ({ ...position, avgDrawdown: -Math.abs(Number(position.avgDrawdown || 0)) }))
+    .map((position) => {
+      const ticker = String(position?.ticker || "").toUpperCase();
+      const hint = portfolioHint(position);
+      return {
+        ...position,
+        avgDrawdown: -Math.abs(Number(position.avgDrawdown || 0)),
+        chartTicker: tickerCounts.get(ticker) > 1 && hint ? `${ticker} (${hint})` : position.ticker,
+      };
+    })
     .sort((left, right) => left.avgDrawdown - right.avgDrawdown);
   const chartHeight = Math.max(280, Math.min(680, sorted.length * 42 + 32));
   const maxDrawdownMagnitude = Math.max(12, ...sorted.map((position) => Math.abs(position.avgDrawdown || 0)));
@@ -33,8 +51,8 @@ export function AvgDrawdownView({avgDrawdown}) {
             />
             <YAxis
               type="category"
-              dataKey="ticker"
-              width={58}
+              dataKey="chartTicker"
+              width={90}
               tickLine={false}
               axisLine={false}
               tick={{fontSize: 12}}
@@ -60,7 +78,7 @@ export function AvgDrawdownView({avgDrawdown}) {
           </thead>
           <tbody>
             {sorted.map((position) => (
-              <tr key={position.id}>
+              <tr key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`} title={portfolioHint(position) ? `Portfolio: ${portfolioHint(position)}` : undefined}>
                 <td><strong>{position.ticker}</strong></td>
                 <td>{position.company || "—"}</td>
                 <td className="table-center">{money(position.peak, 2)}</td>
@@ -76,10 +94,13 @@ export function AvgDrawdownView({avgDrawdown}) {
       </div>
       <div className="mobile-list">
         {sorted.map((position) => (
-          <article className="mobile-card mobile-card-position" key={position.id}>
+          <article className="mobile-card mobile-card-position" key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`}>
             <div className="mobile-card-top">
               <div>
-                <strong>{position.ticker}</strong>
+                <div className="mobile-transaction-title-block">
+                  <strong>{position.ticker}</strong>
+                  {portfolioHint(position) ? <span className="portfolio-row-hint mobile-portfolio-row-hint">{portfolioHint(position)}</span> : null}
+                </div>
                 <small>{position.company || "—"}</small>
               </div>
               <div className="mobile-card-top-meta">

@@ -967,8 +967,70 @@ button {
   color: #fff;
   border-color: #7aa3de;
 }
+.portfolio-chip.active.current {
+  box-shadow: 0 16px 28px rgba(18, 48, 95, 0.16);
+}
 .portfolio-chip.active small {
   color: #d7e6ff;
+}
+.portfolio-group-stack {
+  display: grid;
+  gap: 14px;
+  position: relative;
+}
+.portfolio-group-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.94));
+  border: 1px solid rgba(18, 48, 95, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+.portfolio-group-panel .portfolio-bar-summary {
+  margin-top: 0;
+}
+.portfolio-group-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 4px 2px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: var(--ink);
+}
+.portfolio-group-toggle-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.portfolio-group-toggle-copy strong {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.portfolio-group-toggle-copy span {
+  color: #60718e;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.portfolio-group-toggle i {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(18, 48, 95, 0.06);
+  color: #264878;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+}
+.portfolio-tab-loading {
+  margin-top: 0;
 }
 .portfolio-create-row {
   display: grid;
@@ -1141,6 +1203,13 @@ button {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.news-card-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.news-card-meta span:last-child {
+  margin-left: auto;
 }
 .news-card h3 {
   margin: 0;
@@ -1676,6 +1745,23 @@ button {
   background: rgba(252, 253, 255, 0.98);
   backdrop-filter: blur(10px);
 }
+.portfolio-row-hint {
+  display: inline-flex;
+  align-items: center;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #516582;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
 .mobile-list {
   display: none;
 }
@@ -1697,6 +1783,22 @@ button {
   );
   border: 1px solid rgba(18, 48, 95, 0.08);
   box-shadow: var(--shadow-soft);
+}
+.portfolio-overview-card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.portfolio-overview-card-button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(38, 88, 156, 0.24);
+  box-shadow: 0 22px 34px rgba(18, 48, 95, 0.12);
+}
+.portfolio-overview-card-button:focus-visible,
+.portfolio-group-toggle:focus-visible {
+  outline: 2px solid rgba(38, 88, 156, 0.4);
+  outline-offset: 2px;
 }
 .portfolio-overview-card span {
   color: #60718e;
@@ -1807,16 +1909,14 @@ button {
   gap: 10px;
 }
 .portfolio-switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  display: block;
   width: 100%;
   padding: 14px 16px;
   border-radius: 20px;
   border: 1px solid #dfe8f4;
   background: #f8fbff;
   text-align: left;
+  transition: 0.2s ease;
 }
 .portfolio-switch-row strong {
   display: block;
@@ -1839,6 +1939,15 @@ button {
 .portfolio-switch-row.active {
   background: #eef4ff;
   border-color: #b9cff0;
+  box-shadow: 0 10px 24px rgba(18, 48, 95, 0.08);
+}
+.portfolio-switch-row.selected:not(.active) {
+  background: linear-gradient(180deg, rgba(244, 249, 255, 0.98), rgba(238, 245, 255, 0.96));
+  border-color: #aecaef;
+  box-shadow: inset 0 0 0 1px rgba(27, 97, 202, 0.08);
+}
+.portfolio-switch-row:hover {
+  transform: translateY(-1px);
 }
 table {
   width: 100%;
@@ -3024,6 +3133,9 @@ tbody td > small {
   .portfolio-overview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .portfolio-group-toggle-copy strong {
+    font-size: 17px;
+  }
   .portfolio-view-layout {
     grid-template-columns: 1fr;
   }
@@ -3228,6 +3340,16 @@ tbody td > small {
     min-width: 144px;
     padding: 13px 14px;
     border-radius: 18px;
+  }
+  .portfolio-group-panel {
+    padding: 12px;
+    border-radius: 22px;
+  }
+  .portfolio-group-toggle {
+    padding: 4px 2px 0;
+  }
+  .portfolio-group-toggle-copy span {
+    font-size: 12px;
   }
   .portfolio-chip span {
     font-size: 14px;
@@ -3549,6 +3671,15 @@ tbody td > small {
     gap: 12px;
     position: relative;
   }
+  .mobile-position-portfolio-hint {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 1;
+    max-width: 96px;
+    font-size: 9px;
+    padding: 5px 7px;
+  }
   .mobile-position-card-toggle {
     display: grid;
     gap: 12px;
@@ -3582,6 +3713,9 @@ tbody td > small {
     white-space: nowrap;
     flex: 0 0 auto;
     align-self: center;
+  }
+  .mobile-position-card.has-portfolio-hint .mobile-position-card-inline-values {
+    padding-top: 18px;
   }
   .mobile-position-card-inline-values strong {
     font-size: 14px;
@@ -3829,6 +3963,20 @@ tbody td > small {
     font-weight: 700;
     line-height: 1.25;
   }
+  .mobile-transaction-title-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .mobile-transaction-title-block strong {
+    min-width: 0;
+  }
+  .mobile-portfolio-row-hint {
+    max-width: 110px;
+    font-size: 9px;
+    padding: 5px 7px;
+  }
   .mobile-card-transaction-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -3991,6 +4139,9 @@ tbody td > small {
   .portfolio-chip {
     min-width: 132px;
   }
+  .portfolio-overview-grid {
+    grid-template-columns: 1fr;
+  }
   .portfolio-bar {
     padding: 14px;
   }
@@ -4022,6 +4173,26 @@ tbody td > small {
     width: 100%;
     padding: 12px 13px;
     border-radius: 16px;
+  }
+  .portfolio-group-panel {
+    gap: 10px;
+    padding: 10px;
+    border-radius: 20px;
+  }
+  .portfolio-group-toggle {
+    gap: 10px;
+  }
+  .portfolio-group-toggle-copy strong {
+    font-size: 16px;
+  }
+  .portfolio-group-toggle-copy span {
+    font-size: 11px;
+  }
+  .portfolio-group-toggle i {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    font-size: 18px;
   }
   .top-menu-action-button {
     width: 72px;

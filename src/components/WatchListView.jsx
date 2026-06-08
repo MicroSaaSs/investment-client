@@ -17,6 +17,10 @@ function SourceBadge({ source, type }) {
   return <span className={`data-source-badge data-source-${normalized}`}>{sourceLabel(source, type)}</span>;
 }
 
+function portfolioHint(position) {
+  return String(position?.portfolioName || "").trim();
+}
+
 export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
   const watchSettings = DEFAULT_WATCH_SETTINGS;
   const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Avg drawdown window ${watchSettings.avgDrawdownWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
@@ -89,7 +93,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           </thead>
           <tbody>
             {sorted.map((position) => (
-              <tr key={position.id}>
+              <tr key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`} title={portfolioHint(position) ? `Portfolio: ${portfolioHint(position)}` : undefined}>
                 <td><strong>{position.ticker}</strong></td>
                 <td>{companyLabel(position)}</td>
                 <td className="table-center">
@@ -113,10 +117,13 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
       </div>
       <div className="mobile-list">
         {sorted.map((position) => (
-          <article className="mobile-card mobile-card-position" key={position.id}>
+          <article className="mobile-card mobile-card-position" key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`}>
             <div className="mobile-card-top">
               <div>
-                <strong>{position.ticker}</strong>
+                <div className="mobile-transaction-title-block">
+                  <strong>{position.ticker}</strong>
+                  {portfolioHint(position) ? <span className="portfolio-row-hint mobile-portfolio-row-hint">{portfolioHint(position)}</span> : null}
+                </div>
                 <small>{companyLabel(position)}</small>
               </div>
               <div className="mobile-position-card-actions mobile-position-card-actions-inline">

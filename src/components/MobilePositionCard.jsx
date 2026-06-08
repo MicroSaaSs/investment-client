@@ -344,47 +344,49 @@ export function PositionSummaryMetricControl({
           subtitle="Pick up to 3 metrics for compact cards."
           title="Summary metrics"
         >
-          <div className="holdings-columns-picker">
-            <div className="holdings-columns-option holdings-columns-option-select">
-              <div className="position-order-header">
-                <span>Position order (manual)</span>
-                <button
-                  aria-label="Apply metric selection"
-                  className="toolbar-icon-button modal-icon-action position-metric-apply-icon"
-                  onClick={applySelection}
-                  title="Apply"
-                  type="button"
-                >
-                  <span aria-hidden="true">✓</span>
-                </button>
-              </div>
-              <div className="position-order-list">
-                {draftOrderedPositions.map((position, index) => (
-                  <div className="position-order-row" key={position.id}>
-                    <strong>{position.ticker}</strong>
-                    <div className="position-order-row-actions">
-                      <button
-                        className="mini-button"
-                        disabled={index === 0}
-                        onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "up"))}
-                        type="button"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        className="mini-button"
-                        disabled={index === draftOrderedPositions.length - 1}
-                        onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "down"))}
-                        type="button"
-                      >
-                        ↓
-                      </button>
+          {onReorderPositions ? (
+            <div className="holdings-columns-picker">
+              <div className="holdings-columns-option holdings-columns-option-select">
+                <div className="position-order-header">
+                  <span>Position order (manual)</span>
+                  <button
+                    aria-label="Apply metric selection"
+                    className="toolbar-icon-button modal-icon-action position-metric-apply-icon"
+                    onClick={applySelection}
+                    title="Apply"
+                    type="button"
+                  >
+                    <span aria-hidden="true">✓</span>
+                  </button>
+                </div>
+                <div className="position-order-list">
+                  {draftOrderedPositions.map((position, index) => (
+                    <div className="position-order-row" key={position.id}>
+                      <strong>{position.ticker}</strong>
+                      <div className="position-order-row-actions">
+                        <button
+                          className="mini-button"
+                          disabled={index === 0}
+                          onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "up"))}
+                          type="button"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className="mini-button"
+                          disabled={index === draftOrderedPositions.length - 1}
+                          onClick={() => setDraftOrderIds((current) => moveManualOrderItem(current, position.id, "down"))}
+                          type="button"
+                        >
+                          ↓
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
           <PositionSummaryMetricPicker onApply={applySelection} onChange={setDraftMetricIds} selectedMetricIds={draftMetricIds} showHeader={false} />
         </ModalSheet>
       ) : null}
@@ -409,6 +411,7 @@ export function MobilePositionCard({
   onEdit,
   onToggle,
   position,
+  portfolioName = "",
   summaryMetricIds,
 }) {
   const isCash = isCashPosition(position);
@@ -422,12 +425,15 @@ export function MobilePositionCard({
 
   return (
     <article
-      className={`mobile-card mobile-card-position mobile-position-card${expanded ? " is-expanded" : ""}${dropTarget ? " is-drop-target" : ""}`}
+      className={`mobile-card mobile-card-position mobile-position-card${expanded ? " is-expanded" : ""}${dropTarget ? " is-drop-target" : ""}${portfolioName && !expanded ? " has-portfolio-hint" : ""}`}
       draggable={draggable}
       onDragOver={onDragOver}
       onDragStart={onDragStart}
       onDrop={onDrop}
     >
+      {portfolioName && !expanded ? (
+        <span className="portfolio-row-hint mobile-position-portfolio-hint">{portfolioName}</span>
+      ) : null}
       <div
         aria-expanded={expanded}
         className="mobile-position-card-toggle"
@@ -539,8 +545,14 @@ export function MobilePositionCard({
             <div className="mobile-position-card-stat">
               <span>Value</span>
               <div className="mobile-position-card-stat-lines">
-                <strong>Invest {money(position.invested, 0)}</strong>
-                <strong>Curr {money(position.current, 0)}</strong>
+                {isCash ? (
+                  <strong>Balance {money(position.current, 0)}</strong>
+                ) : (
+                  <>
+                    <strong>Invest {money(position.invested, 0)}</strong>
+                    <strong>Curr {money(position.current, 0)}</strong>
+                  </>
+                )}
               </div>
             </div>
             {!isCash ? (
