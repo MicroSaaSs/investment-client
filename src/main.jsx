@@ -173,7 +173,7 @@ function App() {
 
   function handleTabChange(nextTab) {
     setTab(nextTab);
-    if (["portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(nextTab)) {
+    if (["dashboard", "portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(nextTab)) {
       ensurePortfolioTabSelectionLoaded(effectiveSelectedPortfolioIds, portfolioId);
     }
   }
@@ -295,6 +295,46 @@ function App() {
     ))],
     [rawPositionsByPortfolio, selectedHoldingPortfolioIds]
   );
+  const dashboardMetrics = useMemo(() => {
+    const ids = selectedHoldingPortfolioIds.length ? selectedHoldingPortfolioIds : (portfolioId ? [portfolioId] : []);
+    if (!ids.length) return metrics;
+    if (ids.length === 1 && ids[0] === portfolioId) return metrics;
+
+    const dashboardPositions = [];
+    let totalValue = 0;
+    let invested = 0;
+    let activeSignals = 0;
+    for (const id of ids) {
+      const sourceMetrics = id === portfolioId ? metrics : portfolioTabDataById[id]?.metrics;
+      if (!sourceMetrics) continue;
+      totalValue += Number(sourceMetrics.totalValue || 0);
+      invested += Number(sourceMetrics.invested || 0);
+      activeSignals += Number(sourceMetrics.activeSignals || 0);
+      const portfolioName = portfolioNameById[id] || "";
+      dashboardPositions.push(
+        ...(sourceMetrics.positions || []).map((position) => ({
+          ...position,
+          portfolioContextId: id,
+          portfolioId: id,
+          portfolioName,
+        }))
+      );
+    }
+    const pnl = totalValue - invested;
+    const cashTrackedValue = dashboardPositions
+      .filter((position) => position.mode !== "WATCHLIST")
+      .filter((position) => position.type === "CASH" || position.type === "CASH_ETF")
+      .reduce((sum, position) => sum + Number(position.current || 0), 0);
+    return {
+      totalValue,
+      invested,
+      pnl,
+      pnlPct: invested > 0 ? (pnl / invested) * 100 : 0,
+      cashWeight: totalValue > 0 ? (cashTrackedValue / totalValue) * 100 : 0,
+      activeSignals,
+      positions: dashboardPositions,
+    };
+  }, [metrics, portfolioId, portfolioNameById, portfolioTabDataById, selectedHoldingPortfolioIds]);
 
   useEffect(() => {
     if (!portfolioId || tab !== "news") return;
@@ -303,6 +343,14 @@ function App() {
       setError(String(error.message || error));
     });
   }, [newsFilters.period, newsFilters.ticker, portfolioId, selectedHoldingPortfolioKey, tab]);
+
+  useEffect(() => {
+    if (!portfolioId || tab !== "dashboard" || selectedHoldingPortfolioIds.length <= 1) return;
+    ensurePortfolioTabSelectionLoaded(selectedHoldingPortfolioIds, portfolioId);
+    refreshEquityHistory(selectedHoldingPortfolioIds, equityRange, equityMode).catch((error) => {
+      setError(String(error.message || error));
+    });
+  }, [equityMode, equityRange, portfolioId, selectedHoldingPortfolioKey, tab]);
   const handleCreatePortfolioModal = () => setModal("create-portfolio");
   const handlePositionCreateModal = () => setModal("position");
   const handleTransactionCreateModal = () => {
@@ -502,6 +550,7 @@ function App() {
             handleTabChange={handleTabChange}
             holdingsPositionSummaryMetrics={holdingsPositionSummaryMetrics}
             metrics={metrics}
+            dashboardMetrics={dashboardMetrics}
             news={news}
             newsBusy={newsBusy}
             newsFilters={newsFilters}
@@ -592,6 +641,7 @@ function App() {
         handleTabChange={handleTabChange}
         holdingsPositionSummaryMetrics={holdingsPositionSummaryMetrics}
         metrics={metrics}
+        dashboardMetrics={dashboardMetrics}
         news={news}
         newsBusy={newsBusy}
         newsFilters={newsFilters}

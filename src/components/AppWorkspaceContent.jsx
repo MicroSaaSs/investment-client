@@ -20,6 +20,7 @@ export function AppWorkspaceContent(props) {
     aiSummaryBusy,
     avgDrawdownPositions,
     currentUser,
+    dashboardMetrics,
     effectiveSelectedPortfolioIds,
     equityHistory,
     equityHistoryBusy,
@@ -144,7 +145,8 @@ export function AppWorkspaceContent(props) {
             equityHistoryBusy={equityHistoryBusy}
             equityMode={equityMode}
             equityRange={equityRange}
-            metrics={metrics}
+            metrics={dashboardMetrics || metrics}
+            multiPortfolioMode={effectiveSelectedPortfolioIds.length > 1}
             onEquityModeChange={onEquityModeChange}
             onEquityRangeChange={onEquityRangeChange}
           />

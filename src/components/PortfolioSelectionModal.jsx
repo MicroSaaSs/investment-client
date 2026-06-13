@@ -10,8 +10,8 @@ export function PortfolioSelectionModal({
 }) {
   const selectionCount = selectedPortfolioIds.length;
   const subtitle = selectionCount > 1
-    ? `${selectionCount} portfolios are selected. Tap rows to add or remove them from the shared selection. The current portfolio still drives dashboard, positions, watch list, and avg drawdown.`
-    : "Tap rows to build the shared portfolio selection. The current portfolio still drives dashboard, positions, watch list, and avg drawdown.";
+    ? `${selectionCount} portfolios are selected. Tap rows to add or remove them from the shared selection. Dashboard, portfolios, holdings, watch list, news, and avg drawdown will use that shared selection.`
+    : "Tap rows to build the shared portfolio selection. Dashboard, portfolios, holdings, watch list, news, and avg drawdown will use that shared selection.";
 
   return (
     <ModalSheet title="Switch portfolio" subtitle={subtitle} onClose={onClose}>

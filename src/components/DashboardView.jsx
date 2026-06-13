@@ -40,6 +40,31 @@ function normalizeEquityPoints(points) {
   }));
 }
 
+function buildAllocationItems(positions, valueKey, {showPlanPct = false} = {}) {
+  const byTicker = new Map();
+  for (const position of positions || []) {
+    const name = String(position?.ticker || "").trim().toUpperCase();
+    const value = Number(position?.[valueKey] || 0);
+    if (!name || value <= 0) continue;
+    const current = byTicker.get(name) || {name, value: 0, planPctWeighted: 0, planPctWeight: 0};
+    current.value += value;
+    if (showPlanPct) {
+      const weightBase = Math.max(Number(position?.current || 0), 0);
+      const target = Number(position?.target ?? position?.targetAllocationPct ?? 0);
+      current.planPctWeighted += target * weightBase;
+      current.planPctWeight += weightBase;
+    }
+    byTicker.set(name, current);
+  }
+  return [...byTicker.values()]
+    .map((item) => ({
+      name: item.name,
+      value: item.value,
+      planPct: showPlanPct && item.planPctWeight > 0 ? item.planPctWeighted / item.planPctWeight : null,
+    }))
+    .sort((left, right) => right.value - left.value);
+}
+
 function buildEquityTicks(points, maxTicks = 8) {
   if (!points?.length) return [];
   if (points.length <= maxTicks) return points.map((_, index) => index);
@@ -443,6 +468,7 @@ export function DashboardView({
   equityHistoryBusy,
   equityRange,
   equityMode,
+  multiPortfolioMode = false,
   onEquityRangeChange,
   onEquityModeChange,
 }) {
@@ -460,18 +486,11 @@ export function DashboardView({
     [detailPositions]
   );
   const boughtAllocation = React.useMemo(
-    () => activePositions.filter((position) => position.invested > 0).map((position) => ({
-      name: position.ticker,
-      value: position.invested,
-    })),
+    () => buildAllocationItems(activePositions, "invested"),
     [activePositions]
   );
   const currentAllocation = React.useMemo(
-    () => activePositions.filter((position) => position.current > 0).map((position) => ({
-      name: position.ticker,
-      value: position.current,
-      planPct: Number(position.target ?? position.targetAllocationPct ?? 0),
-    })),
+    () => buildAllocationItems(activePositions, "current", {showPlanPct: true}),
     [activePositions]
   );
   if (!metrics) return null;
@@ -489,7 +508,11 @@ export function DashboardView({
         <div className="panel-heading">
           <div>
             <h2>Capital Curve</h2>
-            <p className="panel-copy">Daily portfolio capital rebuilt from transactions and market prices.</p>
+            <p className="panel-copy">
+              {multiPortfolioMode
+                ? "Daily capital combined across the selected portfolios and rebuilt from transactions plus market prices."
+                : "Daily portfolio capital rebuilt from transactions and market prices."}
+            </p>
             <div className="chart-legend" aria-label="Capital curve legend">
               <span className="chart-legend-item">
                 <i className={`chart-legend-swatch ${capitalStroke === "#c3504c" ? "chart-legend-swatch-pnl-down" : "chart-legend-swatch-value"}`} />
@@ -537,7 +560,11 @@ export function DashboardView({
           <div className="panel-heading">
             <div>
               <h2>Bought Allocation</h2>
-              <p className="panel-copy">How the invested capital was originally distributed across active holdings.</p>
+              <p className="panel-copy">
+                {multiPortfolioMode
+                  ? "How invested capital is distributed across the selected portfolios, grouped by ticker."
+                  : "How the invested capital was originally distributed across active holdings."}
+              </p>
             </div>
           </div>
           <div className="allocation-pie-layout">
@@ -550,7 +577,11 @@ export function DashboardView({
           <div className="panel-heading">
             <div>
               <h2>Current Allocation</h2>
-              <p className="panel-copy">How the live portfolio value is distributed right now across active holdings.</p>
+              <p className="panel-copy">
+                {multiPortfolioMode
+                  ? "How live value is distributed right now across the selected portfolios, grouped by ticker."
+                  : "How the live portfolio value is distributed right now across active holdings."}
+              </p>
             </div>
           </div>
           <div className="allocation-pie-layout">

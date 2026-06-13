@@ -105,8 +105,9 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
   }
 
   async function refreshEquityHistory(id = portfolioId, range = equityRange, mode = equityMode) {
-    if (!id) return;
-    const requestKey = `${id}:${range}:${mode}`;
+    const ids = [...new Set((Array.isArray(id) ? id : [id]).filter(Boolean))];
+    if (!ids.length) return;
+    const requestKey = `${ids.join(",")}:${range}:${mode}`;
     if (equityHistoryRequestRef.current.controller) {
       equityHistoryRequestRef.current.controller.abort();
     }
@@ -114,7 +115,10 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
     equityHistoryRequestRef.current = {controller, key: requestKey};
     setEquityHistoryBusy(true);
     try {
-      const history = await api.getEquityCurve(id, range, mode, {signal: controller.signal});
+      const responses = await Promise.all(
+        ids.map((portfolioId) => api.getEquityCurve(portfolioId, range, mode, {signal: controller.signal}))
+      );
+      const history = mergeEquityHistoryResponses(responses, range, mode);
       if (equityHistoryRequestRef.current.key !== requestKey) return;
       startTransition(() => {
         setEquityHistory(history || null);
@@ -127,6 +131,60 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
         setEquityHistoryBusy(false);
       }
     }
+  }
+
+  function mergeEquityHistoryResponses(responses, range, mode) {
+    const validResponses = (responses || []).filter(Boolean);
+    if (!validResponses.length) return null;
+    if (validResponses.length === 1) return validResponses[0];
+
+    const pointsByDay = new Map();
+    for (const response of validResponses) {
+      for (const point of response?.points || []) {
+        const day = point?.day;
+        if (!day) continue;
+        const current = pointsByDay.get(day) || {
+          day,
+          value: 0,
+          invested: 0,
+          netContributions: 0,
+          cash: 0,
+          marketValue: 0,
+          realizedPnl: 0,
+          unrealizedPnl: 0,
+          totalPnl: 0,
+        };
+        current.value += Number(point?.value || 0);
+        current.invested += Number(point?.invested || 0);
+        current.netContributions += Number(point?.netContributions || 0);
+        current.cash += Number(point?.cash || 0);
+        current.marketValue += Number(point?.marketValue || 0);
+        current.realizedPnl += Number(point?.realizedPnl || 0);
+        current.unrealizedPnl += Number(point?.unrealizedPnl || 0);
+        current.totalPnl += Number(point?.totalPnl || 0);
+        pointsByDay.set(day, current);
+      }
+    }
+
+    const points = [...pointsByDay.values()].sort((left, right) => String(left.day).localeCompare(String(right.day)));
+    const invested = validResponses.reduce((sum, item) => sum + Number(item?.invested || 0), 0);
+    const current = validResponses.reduce((sum, item) => sum + Number(item?.current || 0), 0);
+    const pnl = validResponses.reduce((sum, item) => sum + Number(item?.pnl || 0), 0);
+    return {
+      points,
+      invested,
+      current,
+      pnl,
+      pnlPct: invested > 0 ? (pnl / invested) * 100 : 0,
+      range,
+      mode,
+      netContributions: validResponses.reduce((sum, item) => sum + Number(item?.netContributions || 0), 0),
+      cash: validResponses.reduce((sum, item) => sum + Number(item?.cash || 0), 0),
+      marketValue: validResponses.reduce((sum, item) => sum + Number(item?.marketValue || 0), 0),
+      realizedPnl: validResponses.reduce((sum, item) => sum + Number(item?.realizedPnl || 0), 0),
+      unrealizedPnl: validResponses.reduce((sum, item) => sum + Number(item?.unrealizedPnl || 0), 0),
+      totalPnl: validResponses.reduce((sum, item) => sum + Number(item?.totalPnl || 0), 0),
+    };
   }
 
   function mergeNewsResponses(responses) {
