@@ -1,5 +1,5 @@
 import React from "react";
-import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
+import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
 import { ModalSheet } from "./ModalSheet";
 import { getPositionSummaryMetricConfig, MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { PortfolioBar } from "./PortfolioBar";
@@ -143,7 +143,9 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
                   <strong>{money(position.price, 2)}</strong>
                   <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                 </div>
-                <strong className="position-detail-secondary-value">Peak {money(position.peak, 2)}</strong>
+                <strong className="position-detail-secondary-value">
+                  Peak {money(position.peak, 2)}{position.peakDate ? ` · ${shortDate(position.peakDate)}` : ""}
+                </strong>
               </div>
               <div className="position-detail-grid-card">
                 <span>PnL</span>

@@ -1,6 +1,6 @@
 import React from "react";
 import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
-import {money, pct, pctNegative} from "../utils/format";
+import {money, pct, pctNegative, shortDate} from "../utils/format";
 
 function portfolioHint(position) {
   return String(position?.portfolioName || "").trim();
@@ -81,7 +81,12 @@ export function AvgDrawdownView({avgDrawdown}) {
               <tr key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`} title={portfolioHint(position) ? `Portfolio: ${portfolioHint(position)}` : undefined}>
                 <td><strong>{position.ticker}</strong></td>
                 <td>{position.company || "—"}</td>
-                <td className="table-center">{money(position.peak, 2)}</td>
+                <td className="table-center">
+                  <div className="table-cell-stack table-cell-stack-center">
+                    <span>{money(position.peak, 2)}</span>
+                    {position.peakDate ? <small>{shortDate(position.peakDate)}</small> : null}
+                  </div>
+                </td>
                 <td className="table-center">{money(position.price, 2)}</td>
                 <td className="table-center">{pct(position.dd)}</td>
                 <td className="table-center">{pctNegative(position.avgDrawdown)}</td>
@@ -109,7 +114,7 @@ export function AvgDrawdownView({avgDrawdown}) {
               </div>
             </div>
             <div className="mobile-card-summary">
-              <span><strong>Peak</strong>{money(position.peak, 2)}</span>
+              <span><strong>Peak</strong>{position.peakDate ? `${money(position.peak, 2)} · ${shortDate(position.peakDate)}` : money(position.peak, 2)}</span>
               <span><strong>Price</strong>{money(position.price, 2)}</span>
               <span><strong>Drawdown</strong>{pct(position.dd)}</span>
               <span><strong>Window</strong>{position.avgDrawdownPeriod} mo</span>

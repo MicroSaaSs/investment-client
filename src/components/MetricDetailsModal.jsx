@@ -1,6 +1,6 @@
 import React from "react";
 import {ModalSheet} from "./ModalSheet";
-import {money, pct} from "../utils/format";
+import {money, pct, shortDate} from "../utils/format";
 
 function SignalBadge({signal}) {
   const normalized = signal || "HOLD";
@@ -28,7 +28,7 @@ function PositionMiniRow({position, mode}) {
           <div className="metric-detail-inline-list">
             <span>{money(position.price, 2)}</span>
             <span>DD {pct(position.dd)}</span>
-            <span>Peak {money(position.peak, 2)}</span>
+            <span>Peak {money(position.peak, 2)}{position.peakDate ? ` · ${shortDate(position.peakDate)}` : ""}</span>
           </div>
         ) : valueMap[mode]}
       </div>

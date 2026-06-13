@@ -1,5 +1,5 @@
 import React from "react";
-import { money, pct, pctNegative, sourceLabel } from "../utils/format";
+import { money, pct, pctNegative, shortDate, sourceLabel } from "../utils/format";
 import { TrashIcon } from "./icons/TrashIcon";
 
 const DEFAULT_WATCH_SETTINGS = {
@@ -75,7 +75,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
         <article className="watchlist-summary-card">
           <span>Deepest drawdown</span>
           <strong>{deepestDrawdown ? `${deepestDrawdown.ticker}: ${pct(deepestDrawdown.dd)}` : "—"}</strong>
-          <small>{deepestDrawdown ? `Peak ${money(deepestDrawdown.peak, 2)}` : "No data yet"}</small>
+          <small>{deepestDrawdown ? `Peak ${money(deepestDrawdown.peak, 2)}${deepestDrawdown.peakDate ? ` · ${shortDate(deepestDrawdown.peakDate)}` : ""}` : "No data yet"}</small>
         </article>
       </div>
       <div className="table-wrap desktop-table watchlist-desktop-table">
@@ -102,7 +102,12 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                     <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                   </div>
                 </td>
-                <td className="table-center">{money(position.peak, 2)}</td>
+                <td className="table-center">
+                  <div className="table-cell-stack table-cell-stack-center">
+                    <span>{money(position.peak, 2)}</span>
+                    {position.peakDate ? <small>{shortDate(position.peakDate)}</small> : null}
+                  </div>
+                </td>
                 <td className="table-center">{pct(position.dd)}</td>
                 <td className="table-center">{pctNegative(position.avgDrawdown)}</td>
                 <td className="table-center">
@@ -144,7 +149,11 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 <strong>{money(position.price, 2)}</strong>
                 <small><SourceBadge source={position.priceSource} type={position.type} /></small>
               </div>
-              <div><span>Peak</span><strong>{money(position.peak, 2)}</strong></div>
+              <div>
+                <span>Peak</span>
+                <strong>{money(position.peak, 2)}</strong>
+                {position.peakDate ? <small>{shortDate(position.peakDate)}</small> : null}
+              </div>
               <div><span>Drawdown</span><strong>{pct(position.dd)}</strong></div>
               <div><span>Avg Drawdown</span><strong>{pctNegative(position.avgDrawdown)}</strong></div>
             </div>

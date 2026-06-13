@@ -14,6 +14,20 @@ export function compactMoney(value, fallback = "—") {
   return money(n);
 }
 
+export function shortDate(value, fallback = "—") {
+  if (!value) return fallback;
+  const raw = String(value).trim();
+  if (!raw) return fallback;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00` : raw;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function pct(value, digits = 1) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${Number(value || 0).toFixed(digits)}%`;

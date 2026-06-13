@@ -118,19 +118,19 @@ function AllocationPie({items, showPlanPct = false}) {
     planPct: showPlanPct ? props.payload?.planPct : null,
   });
   return (
-    <ResponsiveContainer width="100%" height={compactLabels ? 320 : 360}>
+    <ResponsiveContainer width="100%" height={compactLabels ? 280 : 360}>
       <PieChart>
         <Pie
           data={items}
           dataKey="value"
           nameKey="name"
-          outerRadius={compactLabels ? 96 : 126}
+          outerRadius={compactLabels ? 92 : 126}
           innerRadius={0}
           paddingAngle={0}
           label={labelRenderer}
           labelLine={false}
           cx="50%"
-          cy={compactLabels ? "56%" : "52%"}
+          cy={compactLabels ? "53%" : "52%"}
           isAnimationActive={false}
         >
           {items.map((entry, index) => <Cell fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} key={entry.name} />)}

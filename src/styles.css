@@ -3235,8 +3235,12 @@ tbody td > small {
   .allocation-pie-panel .panel-copy {
     max-width: 100%;
   }
+  .allocation-pie-layout {
+    align-items: flex-start;
+    min-height: 0;
+  }
   .allocation-pie-chart {
-    padding: 0 16px;
+    padding: 0 16px 8px;
   }
 }
 

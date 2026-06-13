@@ -1,5 +1,5 @@
 import React from "react";
-import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
+import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
 import { buildManualOrderIds, moveManualOrderItem, sortPositions } from "../utils/positionSort";
@@ -57,6 +57,17 @@ function isCashPosition(position) {
   return position?.type === "CASH";
 }
 
+function peakDateText(position) {
+  const formatted = shortDate(position?.peakDate, "");
+  return formatted || null;
+}
+
+function peakSummary(position) {
+  const value = money(position?.peak, 2);
+  const date = peakDateText(position);
+  return date ? `${value} · ${date}` : value;
+}
+
 export function getPositionSummaryMetricConfig(id, position) {
   if (isCashPosition(position) && id !== "valueCurrent" && id !== "valueInvested") {
     return {
@@ -109,8 +120,9 @@ export function getPositionSummaryMetricConfig(id, position) {
     peakPrice: {
       id: "peakPrice",
       label: "Peak Price",
-      summary: money(position.peak, 2),
+      summary: peakSummary(position),
       detailValue: money(position.peak, 2),
+      detailMeta: peakDateText(position),
     },
     avgPrice: {
       id: "avgPrice",
@@ -138,14 +150,14 @@ export function getPositionSummaryMetricConfig(id, position) {
       label: "Drawdown",
       summary: pct(position.dd),
       detailValue: pct(position.dd),
-      detailMeta: `Peak ${money(position.peak, 2)}`,
+      detailMeta: peakDateText(position) ? `Peak ${money(position.peak, 2)} · ${peakDateText(position)}` : `Peak ${money(position.peak, 2)}`,
     },
     avgDrawdown: {
       id: "avgDrawdown",
       label: "Avg Drawdown",
       summary: pctNegative(position.avgDrawdown),
       detailValue: pctNegative(position.avgDrawdown),
-      detailMeta: `Peak ${money(position.peak, 2)}`,
+      detailMeta: peakDateText(position) ? `Peak ${money(position.peak, 2)} · ${peakDateText(position)}` : `Peak ${money(position.peak, 2)}`,
     },
     corrPercent: {
       id: "corrPercent",
@@ -579,6 +591,7 @@ export function MobilePositionCard({
                       <small><SourceBadge source={position.priceSource} type={position.type} /></small>
                     </div>
                     <strong>Peak {money(position.peak, 2)}</strong>
+                    {peakDateText(position) ? <span>{peakDateText(position)}</span> : null}
                   </div>
                 </div>
                 <div className="mobile-position-card-stat">

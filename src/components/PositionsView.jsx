@@ -1,5 +1,5 @@
 import React from "react";
-import { money, pct, pctMagnitude, pctNegative, pctPlain, sourceLabel } from "../utils/format";
+import { money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
 import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
@@ -131,6 +131,16 @@ function portfolioHint(item) {
 
 function valueOnlyPlaceholder(position, value) {
   return isCashPosition(position) ? "--" : value;
+}
+
+function PeakValue({ position }) {
+  const date = shortDate(position?.peakDate, "");
+  return (
+    <div className="table-cell-stack table-cell-stack-center">
+      <span>{money(position.peak, 2)}</span>
+      {date ? <small>{date}</small> : null}
+    </div>
+  );
 }
 
 const HOLDINGS_METRIC_COLUMNS = [
@@ -451,7 +461,11 @@ export function PositionsView({
                       )}
                     </td>
                   ) : null}
-                  {isColumnVisible("peakPrice") ? <td className="table-center">{valueOnlyPlaceholder(position, money(position.peak, 2))}</td> : null}
+                  {isColumnVisible("peakPrice") ? (
+                    <td className="table-center">
+                      {isCashPosition(position) ? "--" : <PeakValue position={position} />}
+                    </td>
+                  ) : null}
                   {isColumnVisible("avgPrice") ? <td className="table-center">{valueOnlyPlaceholder(position, money(averagePrice(position), 2))}</td> : null}
                   {isColumnVisible("value") ? (
                     <td className="table-center">
