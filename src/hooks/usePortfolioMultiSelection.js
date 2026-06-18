@@ -1,4 +1,4 @@
-import {startTransition, useEffect, useMemo, useState} from "react";
+import {startTransition, useEffect, useMemo, useRef, useState} from "react";
 
 function uniqueIds(ids = []) {
   return [...new Set(ids.filter(Boolean))];
@@ -15,6 +15,7 @@ export function usePortfolioMultiSelection({
   tab,
 }) {
   const [selectedPortfolioIds, setSelectedPortfolioIds] = useState([]);
+  const selectionInitializedRef = useRef(false);
 
   const selectedPortfolio = useMemo(
     () => portfolios.find((portfolio) => portfolio.id === portfolioId) || null,
@@ -26,20 +27,22 @@ export function usePortfolioMultiSelection({
     : (portfolioId ? [portfolioId] : []);
 
   const multiPortfolioSelected = effectiveSelectedPortfolioIds.length > 1;
-  const topMenuPortfolioLabel = multiPortfolioSelected ? "Multi Selected" : (selectedPortfolio?.name || "");
+  const selectedPortfolioLabel = portfolios.find((portfolio) => portfolio.id === effectiveSelectedPortfolioIds[0])?.name || "";
+  const topMenuPortfolioLabel = multiPortfolioSelected ? "Multi Selected" : (selectedPortfolioLabel || selectedPortfolio?.name || "");
 
   useEffect(() => {
     if (!portfolios.length) {
       setSelectedPortfolioIds([]);
+      selectionInitializedRef.current = false;
       return;
     }
     setSelectedPortfolioIds((current) => {
       const validIds = uniqueIds(current.filter((id) => portfolios.some((portfolio) => portfolio.id === id)));
-      if (portfolioId && !validIds.includes(portfolioId)) {
-        return [portfolioId, ...validIds];
+      if (!selectionInitializedRef.current) {
+        selectionInitializedRef.current = true;
+        return validIds.length ? validIds : (portfolioId ? [portfolioId] : [portfolios[0].id]);
       }
-      if (validIds.length) return validIds;
-      return portfolioId ? [portfolioId] : [portfolios[0].id];
+      return validIds;
     });
   }, [portfolioId, portfolios]);
 
@@ -80,15 +83,31 @@ export function usePortfolioMultiSelection({
     }
   }
 
-  function applyPortfolioSelection(nextPortfolioIds) {
-    const normalizedIds = uniqueIds([
-      portfolioId,
-      ...(Array.isArray(nextPortfolioIds) ? nextPortfolioIds : []),
-    ].filter((id) => portfolios.some((portfolio) => portfolio.id === id)));
-    setSelectedPortfolioIds(normalizedIds);
+  function selectPrimaryPortfolio(nextPortfolioId) {
+    if (!nextPortfolioId || nextPortfolioId === portfolioId) return;
+    const validSelection = selectedPortfolioIds.filter((id) => portfolios.some((portfolio) => portfolio.id === id));
+    setPortfolioId(nextPortfolioId);
     if (tab === "portfolios" || tab === "positions") {
-      syncPrimaryFromCache(portfolioId);
-      ensurePortfolioTabSelectionLoaded(normalizedIds, portfolioId);
+      syncPrimaryFromCache(nextPortfolioId);
+      ensurePortfolioTabSelectionLoaded(validSelection.length ? validSelection : [nextPortfolioId], nextPortfolioId);
+    }
+  }
+
+  function applyPortfolioSelection(nextPortfolioIds, nextPrimaryId = portfolioId) {
+    const normalizedIds = uniqueIds(
+      (Array.isArray(nextPortfolioIds) ? nextPortfolioIds : [])
+        .filter((id) => portfolios.some((portfolio) => portfolio.id === id))
+    );
+    const resolvedPrimaryId = nextPrimaryId && portfolios.some((portfolio) => portfolio.id === nextPrimaryId)
+      ? nextPrimaryId
+      : (portfolioId || portfolios[0]?.id || "");
+    setSelectedPortfolioIds(normalizedIds);
+    if (resolvedPrimaryId && resolvedPrimaryId !== portfolioId) {
+      setPortfolioId(resolvedPrimaryId);
+    }
+    if (tab === "portfolios" || tab === "positions") {
+      syncPrimaryFromCache(resolvedPrimaryId);
+      ensurePortfolioTabSelectionLoaded(normalizedIds.length ? normalizedIds : [resolvedPrimaryId], resolvedPrimaryId);
     }
   }
 
@@ -96,6 +115,7 @@ export function usePortfolioMultiSelection({
     applyPortfolioSelection,
     effectiveSelectedPortfolioIds,
     multiPortfolioSelected,
+    selectPrimaryPortfolio,
     selectedPortfolio,
     selectedPortfolioIds,
     setSelectedPortfolioIds,

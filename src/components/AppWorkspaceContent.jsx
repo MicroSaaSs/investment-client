@@ -52,6 +52,7 @@ export function AppWorkspaceContent(props) {
     onOpenPortfolioSwitch,
     onPortfolioPositionSummaryMetricsChange,
     onPortfolioRename,
+    onApplyPortfolioSelection,
     onPortfolioSelect,
     onReorderPositions,
     onSettingsChange,
@@ -135,6 +136,7 @@ export function AppWorkspaceContent(props) {
             onDelete={onDeletePortfolio}
             onDeletePosition={onWorkspacePortfolioDeletePosition}
             onEditPosition={onWorkspacePortfolioEditPosition}
+            onApplySelection={onApplyPortfolioSelection}
             onRename={onPortfolioRename}
             onSelect={onPortfolioSelect}
           />

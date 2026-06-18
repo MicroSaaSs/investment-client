@@ -20,7 +20,7 @@ export function PortfolioSelectionModal({
     : "Choose which portfolios should be included, then apply the shared selection. The current portfolio still drives dashboard, positions, watch list, and avg drawdown.";
 
   function toggleDraftSelection(nextPortfolioId) {
-    if (!nextPortfolioId || nextPortfolioId === portfolioId) return;
+    if (!nextPortfolioId) return;
     setDraftSelectedIds((current) => (
       current.includes(nextPortfolioId)
         ? current.filter((id) => id !== nextPortfolioId)
@@ -41,7 +41,7 @@ export function PortfolioSelectionModal({
           const isSelected = draftSelectedIds.includes(portfolio.id);
           return (
             <label
-              className={`portfolio-switch-row ${isCurrent ? "active" : ""} ${isSelected ? "selected" : ""}`}
+              className={`portfolio-switch-row ${isCurrent ? "current" : ""} ${isSelected ? "selected" : ""}`}
               key={portfolio.id}
             >
               <div className="portfolio-switch-copy">
@@ -50,7 +50,6 @@ export function PortfolioSelectionModal({
               </div>
               <input
                 checked={isSelected}
-                disabled={isCurrent}
                 onChange={() => toggleDraftSelection(portfolio.id)}
                 type="checkbox"
               />

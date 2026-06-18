@@ -198,6 +198,7 @@ export function PortfolioView({
   onAddTransaction,
   onMobilePositionSummaryMetricsChange,
   onReorderPositions,
+  onApplySelection,
   onSelect,
   onCreate,
   onRename,
@@ -317,6 +318,7 @@ export function PortfolioView({
     <main className="portfolio-view">
       <div className="portfolio-view-layout">
         <PortfolioBar
+          onApplySelection={onApplySelection}
           portfolios={portfolios}
           portfolioId={portfolioId}
           selectedPortfolioIds={selectedPortfolioIds}

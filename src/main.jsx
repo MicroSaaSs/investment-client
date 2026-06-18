@@ -117,6 +117,8 @@ function App() {
   const {
     applyPortfolioSelection,
     effectiveSelectedPortfolioIds,
+    selectedPortfolioIds,
+    selectPrimaryPortfolio,
     selectedPortfolio,
     setSelectedPortfolioIds,
     togglePortfolioSelection,
@@ -359,18 +361,19 @@ function App() {
   };
   const handleApplyPortfolioSelection = (nextSelectedIds) => {
     applyPortfolioSelection(nextSelectedIds);
-    const normalizedIds = [...new Set([portfolioId, ...(Array.isArray(nextSelectedIds) ? nextSelectedIds : [])].filter(Boolean))];
-    if (!normalizedIds.length) return;
+    const normalizedIds = [...new Set((Array.isArray(nextSelectedIds) ? nextSelectedIds : []).filter(Boolean))];
+    const idsToLoad = normalizedIds.length ? normalizedIds : (portfolioId ? [portfolioId] : []);
+    if (!idsToLoad.length) return;
     if (["dashboard", "portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(tab)) {
-      ensurePortfolioTabSelectionLoaded(normalizedIds, portfolioId);
+      ensurePortfolioTabSelectionLoaded(idsToLoad, portfolioId);
     }
-    if (tab === "dashboard" && normalizedIds.length > 1) {
-      refreshEquityHistory(normalizedIds, equityRange, equityMode).catch((error) => {
+    if (tab === "dashboard" && idsToLoad.length > 1) {
+      refreshEquityHistory(idsToLoad, equityRange, equityMode).catch((error) => {
         setError(String(error.message || error));
       });
     }
     if (tab === "news") {
-      refreshNews(normalizedIds, {filters: newsFilters}).catch((error) => {
+      refreshNews(idsToLoad, {filters: newsFilters}).catch((error) => {
         setError(String(error.message || error));
       });
     }
@@ -592,9 +595,10 @@ function App() {
               },
             }).catch((e) => setError(String(e.message || e)))}
             onOpenPortfolioSwitch={handlePortfolioSwitchModal}
+            onApplyPortfolioSelection={handleApplyPortfolioSelection}
             onPortfolioPositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
             onPortfolioRename={(portfolio) => setModal({type: "rename-portfolio", data: portfolio})}
-            onPortfolioSelect={togglePortfolioSelection}
+            onPortfolioSelect={selectPrimaryPortfolio}
             onPositionsSubtabChange={setPositionsSubtab}
             onReorderPositions={reorderPositions}
             onSaveAiSettings={saveAiSettings}
@@ -683,9 +687,10 @@ function App() {
           },
         }).catch((e) => setError(String(e.message || e)))}
         onOpenPortfolioSwitch={handlePortfolioSwitchModal}
+        onApplyPortfolioSelection={handleApplyPortfolioSelection}
         onPortfolioPositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
         onPortfolioRename={(portfolio) => setModal({type: "rename-portfolio", data: portfolio})}
-        onPortfolioSelect={togglePortfolioSelection}
+        onPortfolioSelect={selectPrimaryPortfolio}
         onPositionsSubtabChange={setPositionsSubtab}
         onReorderPositions={reorderPositions}
         onSaveAiSettings={saveAiSettings}
@@ -748,7 +753,7 @@ function App() {
         portfolios={portfolios}
         positionModalPositions={rawPositions}
         positionModalPositionsByPortfolio={rawPositionsByPortfolio}
-        selectedPortfolioIds={effectiveSelectedPortfolioIds}
+        selectedPortfolioIds={selectedPortfolioIds}
         telegramLinkCode={telegramLinkCode}
         onTelegramLinkCodeChange={setTelegramLinkCode}
       />

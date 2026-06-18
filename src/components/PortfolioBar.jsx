@@ -5,19 +5,38 @@ export function PortfolioBar({
   portfolios,
   portfolioId,
   selectedPortfolioIds,
+  onApplySelection,
   onSelect,
   onCreate,
   onRename,
   onDelete,
 }) {
   const [draftName, setDraftName] = React.useState("");
-  const selectedIdSet = React.useMemo(() => new Set(selectedPortfolioIds || []), [selectedPortfolioIds]);
+  const [draftSelectedIds, setDraftSelectedIds] = React.useState(selectedPortfolioIds);
+  const draftSelectedIdSet = React.useMemo(() => new Set(draftSelectedIds || []), [draftSelectedIds]);
+
+  React.useEffect(() => {
+    setDraftSelectedIds(selectedPortfolioIds);
+  }, [selectedPortfolioIds]);
 
   function submitCreate() {
     const name = draftName.trim();
     if (!name) return;
     onCreate({name});
     setDraftName("");
+  }
+
+  function toggleDraftSelection(nextPortfolioId) {
+    if (!nextPortfolioId) return;
+    setDraftSelectedIds((current) => (
+      current.includes(nextPortfolioId)
+        ? current.filter((id) => id !== nextPortfolioId)
+        : [...current, nextPortfolioId]
+    ));
+  }
+
+  function applySelection() {
+    onApplySelection(draftSelectedIds, portfolioId);
   }
 
   return (
@@ -54,17 +73,28 @@ export function PortfolioBar({
         <div className="portfolio-chip-row">
           {portfolios.map((portfolio) => (
             <div
-              className={`portfolio-list-item ${selectedIdSet.has(portfolio.id) ? "active" : ""}`}
+              className={`portfolio-list-item ${draftSelectedIdSet.has(portfolio.id) ? "active" : ""}`}
               key={portfolio.id}
             >
-              <button
-                className={`portfolio-chip ${selectedIdSet.has(portfolio.id) ? "active" : ""} ${portfolio.id === portfolioId ? "current" : ""}`}
-                onClick={() => onSelect(portfolio.id)}
-                type="button"
+              <div
+                className={`portfolio-chip ${draftSelectedIdSet.has(portfolio.id) ? "active" : ""} ${portfolio.id === portfolioId ? "current" : ""}`}
               >
-                <span>{portfolio.name}</span>
-                {portfolio.defaultPortfolio ? <small>DEFAULT</small> : null}
-              </button>
+                <button
+                  className="portfolio-chip-select"
+                  onClick={() => onSelect(portfolio.id)}
+                  type="button"
+                >
+                  <span>{portfolio.name}</span>
+                  {portfolio.defaultPortfolio ? <small>DEFAULT</small> : null}
+                </button>
+                <label className="portfolio-list-item-check">
+                  <input
+                    checked={draftSelectedIdSet.has(portfolio.id)}
+                    onChange={() => toggleDraftSelection(portfolio.id)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
               <div className="portfolio-list-item-actions">
                 <button
                   aria-label={`Rename ${portfolio.name}`}
@@ -87,6 +117,15 @@ export function PortfolioBar({
               </div>
             </div>
           ))}
+        </div>
+        <div className="portfolio-switch-actions portfolio-bar-apply-row">
+          <button
+            className="modal-close portfolio-switch-apply"
+            onClick={applySelection}
+            type="button"
+          >
+            Apply
+          </button>
         </div>
       </div>
     </section>
