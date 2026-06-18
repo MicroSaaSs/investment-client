@@ -2,37 +2,70 @@ import React from "react";
 import {ModalSheet} from "./ModalSheet";
 
 export function PortfolioSelectionModal({
+  onApply,
   onClose,
-  onSelect,
   portfolioId,
   portfolios,
   selectedPortfolioIds,
 }) {
-  const selectionCount = selectedPortfolioIds.length;
+  const [draftSelectedIds, setDraftSelectedIds] = React.useState(selectedPortfolioIds);
+
+  React.useEffect(() => {
+    setDraftSelectedIds(selectedPortfolioIds);
+  }, [selectedPortfolioIds]);
+
+  const selectionCount = draftSelectedIds.length;
   const subtitle = selectionCount > 1
-    ? `${selectionCount} portfolios are selected. Tap rows to add or remove them from the shared selection. Dashboard, portfolios, holdings, watch list, news, and avg drawdown will use that shared selection.`
-    : "Tap rows to build the shared portfolio selection. Dashboard, portfolios, holdings, watch list, news, and avg drawdown will use that shared selection.";
+    ? `${selectionCount} portfolios are selected. Choose which portfolios should be included, then apply the shared selection. The current portfolio still drives dashboard, positions, watch list, and avg drawdown.`
+    : "Choose which portfolios should be included, then apply the shared selection. The current portfolio still drives dashboard, positions, watch list, and avg drawdown.";
+
+  function toggleDraftSelection(nextPortfolioId) {
+    if (!nextPortfolioId || nextPortfolioId === portfolioId) return;
+    setDraftSelectedIds((current) => (
+      current.includes(nextPortfolioId)
+        ? current.filter((id) => id !== nextPortfolioId)
+        : [...current, nextPortfolioId]
+    ));
+  }
+
+  function handleApply() {
+    onApply(draftSelectedIds);
+    onClose();
+  }
 
   return (
     <ModalSheet title="Switch portfolio" subtitle={subtitle} onClose={onClose}>
       <div className="portfolio-switch-list">
         {portfolios.map((portfolio) => {
           const isCurrent = portfolio.id === portfolioId;
-          const isSelected = selectedPortfolioIds.includes(portfolio.id);
+          const isSelected = draftSelectedIds.includes(portfolio.id);
           return (
-            <button
+            <label
               className={`portfolio-switch-row ${isCurrent ? "active" : ""} ${isSelected ? "selected" : ""}`}
               key={portfolio.id}
-              onClick={() => onSelect(portfolio.id)}
-              type="button"
             >
-              <div>
+              <div className="portfolio-switch-copy">
                 <strong>{portfolio.name}</strong>
-                <span>{portfolio.defaultPortfolio ? "Default portfolio" : "Portfolio workspace"}</span>
+                <span>{isCurrent ? "Current portfolio" : (portfolio.defaultPortfolio ? "Default portfolio" : "Portfolio workspace")}</span>
               </div>
-            </button>
+              <input
+                checked={isSelected}
+                disabled={isCurrent}
+                onChange={() => toggleDraftSelection(portfolio.id)}
+                type="checkbox"
+              />
+            </label>
           );
         })}
+      </div>
+      <div className="portfolio-switch-actions">
+        <button
+          className="modal-close portfolio-switch-apply"
+          onClick={handleApply}
+          type="button"
+        >
+          Apply
+        </button>
       </div>
     </ModalSheet>
   );

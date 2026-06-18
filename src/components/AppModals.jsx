@@ -31,7 +31,7 @@ export function AppModals({
   onLinkEmail,
   onLinkTelegram,
   onRenamePortfolio,
-  onSelectPortfolio,
+  onApplyPortfolioSelection,
   portfolios,
   portfolioOptions,
   positionModalPositions,
@@ -49,8 +49,8 @@ export function AppModals({
       {modal === "create-portfolio" ? <PortfolioModal mode="create" onClose={onClose} onSubmit={onCreatePortfolio} /> : null}
       {modal === "switch-portfolio" ? (
         <PortfolioSelectionModal
+          onApply={onApplyPortfolioSelection}
           onClose={onClose}
-          onSelect={onSelectPortfolio}
           portfolioId={portfolioId}
           portfolios={portfolios}
           selectedPortfolioIds={selectedPortfolioIds}

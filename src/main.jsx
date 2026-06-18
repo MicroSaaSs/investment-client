@@ -115,8 +115,8 @@ function App() {
     portfolios,
   });
   const {
+    applyPortfolioSelection,
     effectiveSelectedPortfolioIds,
-    handlePortfolioModalSelect,
     selectedPortfolio,
     setSelectedPortfolioIds,
     togglePortfolioSelection,
@@ -356,6 +356,24 @@ function App() {
   const handleTransactionCreateModal = () => {
     setPositionsSubtab("transactions");
     setModal("transaction");
+  };
+  const handleApplyPortfolioSelection = (nextSelectedIds) => {
+    applyPortfolioSelection(nextSelectedIds);
+    const normalizedIds = [...new Set([portfolioId, ...(Array.isArray(nextSelectedIds) ? nextSelectedIds : [])].filter(Boolean))];
+    if (!normalizedIds.length) return;
+    if (["dashboard", "portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(tab)) {
+      ensurePortfolioTabSelectionLoaded(normalizedIds, portfolioId);
+    }
+    if (tab === "dashboard" && normalizedIds.length > 1) {
+      refreshEquityHistory(normalizedIds, equityRange, equityMode).catch((error) => {
+        setError(String(error.message || error));
+      });
+    }
+    if (tab === "news") {
+      refreshNews(normalizedIds, {filters: newsFilters}).catch((error) => {
+        setError(String(error.message || error));
+      });
+    }
   };
   const handlePortfolioSwitchModal = () => setModal("switch-portfolio");
   const handleWorkspaceAccountModal = () => setModal("account");
@@ -724,7 +742,7 @@ function App() {
         onLinkEmail={handleEmailLink}
         onLinkTelegram={handleTelegramMerge}
         onRenamePortfolio={handleRenamePortfolio}
-        onSelectPortfolio={handlePortfolioModalSelect}
+        onApplyPortfolioSelection={handleApplyPortfolioSelection}
         portfolioId={portfolioId}
         portfolioOptions={portfolios}
         portfolios={portfolios}

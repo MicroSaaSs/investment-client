@@ -80,14 +80,21 @@ export function usePortfolioMultiSelection({
     }
   }
 
-  function handlePortfolioModalSelect(nextPortfolioId) {
-    if (!nextPortfolioId) return;
-    togglePortfolioSelection(nextPortfolioId);
+  function applyPortfolioSelection(nextPortfolioIds) {
+    const normalizedIds = uniqueIds([
+      portfolioId,
+      ...(Array.isArray(nextPortfolioIds) ? nextPortfolioIds : []),
+    ].filter((id) => portfolios.some((portfolio) => portfolio.id === id)));
+    setSelectedPortfolioIds(normalizedIds);
+    if (tab === "portfolios" || tab === "positions") {
+      syncPrimaryFromCache(portfolioId);
+      ensurePortfolioTabSelectionLoaded(normalizedIds, portfolioId);
+    }
   }
 
   return {
+    applyPortfolioSelection,
     effectiveSelectedPortfolioIds,
-    handlePortfolioModalSelect,
     multiPortfolioSelected,
     selectedPortfolio,
     selectedPortfolioIds,
