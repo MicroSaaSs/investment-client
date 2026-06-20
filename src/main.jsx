@@ -219,6 +219,12 @@ function App() {
     return [...new Set(ids.filter(Boolean))];
   }, [effectiveSelectedPortfolioIds, portfolioId]);
   const selectedHoldingPortfolioKey = selectedHoldingPortfolioIds.join("|");
+  const canWritePortfolio = React.useCallback((targetPortfolioId = portfolioId) => {
+    const portfolio = portfolios.find((item) => item.id === targetPortfolioId);
+    if (!portfolio) return true;
+    return !portfolio.shared || portfolio.accessLevel === "FULL";
+  }, [portfolioId, portfolios]);
+  const canWriteSelectedPortfolio = canWritePortfolio(portfolioId);
   const holdingsPositions = useMemo(() => {
     const seen = new Set();
     return selectedHoldingPortfolioIds.flatMap((id) => {
@@ -354,8 +360,18 @@ function App() {
     });
   }, [equityMode, equityRange, portfolioId, selectedHoldingPortfolioKey, tab]);
   const handleCreatePortfolioModal = () => setModal("create-portfolio");
-  const handlePositionCreateModal = () => setModal("position");
+  const handlePositionCreateModal = () => {
+    if (!canWriteSelectedPortfolio) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
+    setModal("position");
+  };
   const handleTransactionCreateModal = () => {
+    if (!canWriteSelectedPortfolio) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
     setPositionsSubtab("transactions");
     setModal("transaction");
   };
@@ -500,34 +516,72 @@ function App() {
   const workspaceAddTransactionHandler = (position) =>
     {
       const contextPortfolioId = position?.portfolioContextId || position?.portfolioId || portfolioId;
+      if (!canWritePortfolio(contextPortfolioId)) {
+        setError("This shared portfolio is read-only.");
+        return;
+      }
       setPositionsSubtab("transactions");
       setModal({type: "transaction", data: transactionSeedForPosition(position, contextPortfolioId)});
     };
-  const workspaceEditPositionHandler = (position) =>
-    setModal({type: "edit-position", data: positionSourceForPortfolio(position, position?.portfolioContextId || position?.portfolioId || portfolioId)});
-  const workspaceDeletePositionHandler = (position) =>
-    setModal({type: "delete-position", data: positionSourceForPortfolio(position, position?.portfolioContextId || position?.portfolioId || portfolioId)});
+  const workspaceEditPositionHandler = (position) => {
+    const contextPortfolioId = position?.portfolioContextId || position?.portfolioId || portfolioId;
+    if (!canWritePortfolio(contextPortfolioId)) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
+    setModal({type: "edit-position", data: positionSourceForPortfolio(position, contextPortfolioId)});
+  };
+  const workspaceDeletePositionHandler = (position) => {
+    const contextPortfolioId = position?.portfolioContextId || position?.portfolioId || portfolioId;
+    if (!canWritePortfolio(contextPortfolioId)) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
+    setModal({type: "delete-position", data: positionSourceForPortfolio(position, contextPortfolioId)});
+  };
   const workspaceEditTransactionHandler = (transaction) =>
     {
       const contextPortfolioId = transaction?.portfolioContextId || transaction?.portfolioId || portfolioId;
+      if (!canWritePortfolio(contextPortfolioId)) {
+        setError("This shared portfolio is read-only.");
+        return;
+      }
       setPositionsSubtab("transactions");
       setModal({type: "edit-transaction", data: transactionRecordWithCompanion(transaction, contextPortfolioId)});
     };
   const workspaceDeleteTransactionHandler = (transaction) =>
     {
       const contextPortfolioId = transaction?.portfolioContextId || transaction?.portfolioId || portfolioId;
+      if (!canWritePortfolio(contextPortfolioId)) {
+        setError("This shared portfolio is read-only.");
+        return;
+      }
       setPositionsSubtab("transactions");
       setModal({type: "delete-transaction", data: transactionRecordWithCompanion(transaction, contextPortfolioId)});
     };
   const portfolioTabTransactionHandler = (position, contextPortfolioId = portfolioId) =>
     {
+      if (!canWritePortfolio(contextPortfolioId)) {
+        setError("This shared portfolio is read-only.");
+        return;
+      }
       setPositionsSubtab("transactions");
       setModal({type: "transaction", data: transactionSeedForPosition(position, contextPortfolioId)});
     };
-  const portfolioTabDeletePositionHandler = (position, contextPortfolioId = portfolioId) =>
+  const portfolioTabDeletePositionHandler = (position, contextPortfolioId = portfolioId) => {
+    if (!canWritePortfolio(contextPortfolioId)) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
     setModal({type: "delete-position", data: positionSourceForPortfolio(position, contextPortfolioId)});
-  const portfolioTabEditPositionHandler = (position, contextPortfolioId = portfolioId) =>
+  };
+  const portfolioTabEditPositionHandler = (position, contextPortfolioId = portfolioId) => {
+    if (!canWritePortfolio(contextPortfolioId)) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
     setModal({type: "edit-position", data: positionSourceForPortfolio(position, contextPortfolioId)});
+  };
 
   if (!isAuthenticated) {
     return (
@@ -559,6 +613,8 @@ function App() {
             aiSummary={aiSummary}
             aiSummaryBusy={aiSummaryBusy}
             avgDrawdownPositions={avgDrawdownPositions}
+            canWritePortfolio={canWritePortfolio}
+            canWriteSelectedPortfolio={canWriteSelectedPortfolio}
             currentUser={currentUser}
             effectiveSelectedPortfolioIds={effectiveSelectedPortfolioIds}
             equityHistory={equityHistory}
@@ -651,6 +707,8 @@ function App() {
         aiSummary={aiSummary}
         aiSummaryBusy={aiSummaryBusy}
         avgDrawdownPositions={avgDrawdownPositions}
+        canWritePortfolio={canWritePortfolio}
+        canWriteSelectedPortfolio={canWriteSelectedPortfolio}
         currentUser={currentUser}
         effectiveSelectedPortfolioIds={effectiveSelectedPortfolioIds}
         equityHistory={equityHistory}
@@ -726,6 +784,7 @@ function App() {
         activeRawPositions={activeRawPositions}
         activeRawPositionsByPortfolio={activeRawPositionsByPortfolio}
         authBusy={authBusy}
+        canWritePortfolio={canWritePortfolio}
         currentUser={currentUser}
         emailLinkForm={emailLinkForm}
         googleClientId={GOOGLE_CLIENT_ID}
@@ -744,6 +803,7 @@ function App() {
         onEditTransaction={handleEditTransaction}
         onEmailLinkFieldChange={updateEmailLinkField}
         onGoogleCredential={handleGoogleLink}
+        onFamilyAccessChanged={loadPortfolios}
         onLinkEmail={handleEmailLink}
         onLinkTelegram={handleTelegramMerge}
         onRenamePortfolio={handleRenamePortfolio}

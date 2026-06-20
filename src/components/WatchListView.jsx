@@ -21,10 +21,12 @@ function portfolioHint(position) {
   return String(position?.portfolioName || "").trim();
 }
 
-export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
+export function WatchListView({ positions, canCreateWatch = true, canWritePortfolio = () => true, onCreateWatch, onDeleteWatch }) {
   const watchSettings = DEFAULT_WATCH_SETTINGS;
   const settingsLine = `Default watch settings: Peak window ${watchSettings.peakWindowMonths} mo · Avg drawdown window ${watchSettings.avgDrawdownWindowMonths} mo · Step size ${watchSettings.stepSizeMonths} mo.`;
   const sorted = [...positions].sort((left, right) => left.avgDrawdown - right.avgDrawdown);
+  const canWriteItem = (item) => canWritePortfolio(item?.portfolioContextId || item?.portfolioId);
+  const canWriteAny = positions.length ? positions.some(canWriteItem) : canCreateWatch;
   const highestAvgDrawdown = sorted[0] || null;
   const deepestDrawdown = [...positions].sort((left, right) => left.dd - right.dd)[0] || null;
 
@@ -37,14 +39,14 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
             <h2>Potential holdings to monitor</h2>
             <p className="panel-copy">Add tickers you are researching and keep an eye on price, peak pressure, and avg drawdown before they become active positions. {settingsLine}</p>
           </div>
-          <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
+          <button className="action-button" disabled={!canWriteAny} onClick={onCreateWatch} title={canWriteAny ? "Add Watch" : "Read-only shared portfolio"} type="button">Add Watch</button>
         </div>
         <div className="watchlist-empty">
           <div className="watchlist-empty-card">
             <p className="modal-kicker">READY FOR RESEARCH</p>
             <h3>No watch items yet</h3>
             <p>Start with the names you are considering next. Each watch item keeps the market snapshot simple: price, peak, drawdown, and average drawdown. {settingsLine}</p>
-            <button className="action-button action-button-secondary" onClick={onCreateWatch} type="button">Create first watch item</button>
+            <button className="action-button action-button-secondary" disabled={!canWriteAny} onClick={onCreateWatch} title={canWriteAny ? "Create first watch item" : "Read-only shared portfolio"} type="button">Create first watch item</button>
           </div>
         </div>
       </section>
@@ -59,7 +61,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
           <h2>Potential holdings to monitor</h2>
           <p className="panel-copy">Track price, peak pressure, and average drawdown before a position joins the portfolio. {settingsLine}</p>
         </div>
-        <button className="action-button" onClick={onCreateWatch} type="button">Add Watch</button>
+        <button className="action-button" disabled={!canWriteAny} onClick={onCreateWatch} title={canWriteAny ? "Add Watch" : "Read-only shared portfolio"} type="button">Add Watch</button>
       </div>
       <div className="watchlist-summary-grid">
         <article className="watchlist-summary-card">
@@ -112,7 +114,7 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 <td className="table-center">{pctNegative(position.avgDrawdown)}</td>
                 <td className="table-center">
                   <div className="row-actions row-actions-center">
-                    <button className="mini-button mini-button-danger" onClick={() => onDeleteWatch(position)} type="button">Delete</button>
+                    <button className="mini-button mini-button-danger" disabled={!canWriteItem(position)} onClick={() => onDeleteWatch(position)} type="button">Delete</button>
                   </div>
                 </td>
               </tr>
@@ -135,8 +137,9 @@ export function WatchListView({ positions, onCreateWatch, onDeleteWatch }) {
                 <button
                   aria-label={`Delete ${position.ticker} watch item`}
                   className="toolbar-icon-button toolbar-icon-button-danger mobile-position-card-action"
+                  disabled={!canWriteItem(position)}
                   onClick={() => onDeleteWatch(position)}
-                  title="Delete watch item"
+                  title={canWriteItem(position) ? "Delete watch item" : "Read-only shared portfolio"}
                   type="button"
                 >
                   <TrashIcon />

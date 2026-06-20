@@ -39,6 +39,11 @@ export function PortfolioBar({
     onApplySelection(draftSelectedIds, portfolioId);
   }
 
+  const portfolioGroups = [
+    {title: "Owned by me", items: portfolios.filter((portfolio) => !portfolio.shared)},
+    {title: "Shared with me", items: portfolios.filter((portfolio) => portfolio.shared)},
+  ].filter((group) => group.items.length);
+
   return (
     <section className="portfolio-bar">
       <div className="portfolio-bar-main">
@@ -71,11 +76,14 @@ export function PortfolioBar({
           </div>
         </div>
         <div className="portfolio-chip-row">
-          {portfolios.map((portfolio) => (
-            <div
-              className={`portfolio-list-item ${draftSelectedIdSet.has(portfolio.id) ? "active" : ""}`}
-              key={portfolio.id}
-            >
+          {portfolioGroups.map((group) => (
+            <div className="portfolio-list-group" key={group.title}>
+              <p className="portfolio-list-group-title">{group.title}</p>
+              {group.items.map((portfolio) => (
+                <div
+                  className={`portfolio-list-item ${draftSelectedIdSet.has(portfolio.id) ? "active" : ""}`}
+                  key={portfolio.id}
+                >
               <div
                 className={`portfolio-chip ${draftSelectedIdSet.has(portfolio.id) ? "active" : ""} ${portfolio.id === portfolioId ? "current" : ""}`}
               >
@@ -86,6 +94,7 @@ export function PortfolioBar({
                 >
                   <span>{portfolio.name}</span>
                   {portfolio.defaultPortfolio ? <small>DEFAULT</small> : null}
+                  {portfolio.shared ? <small>{portfolio.accessLevel === "FULL" ? `SHARED FULL${portfolio.ownerEmail ? ` | ${portfolio.ownerEmail}` : ""}` : `SHARED READ${portfolio.ownerEmail ? ` | ${portfolio.ownerEmail}` : ""}`}</small> : null}
                 </button>
                 <label className="portfolio-list-item-check">
                   <input
@@ -99,8 +108,9 @@ export function PortfolioBar({
                 <button
                   aria-label={`Rename ${portfolio.name}`}
                   className="toolbar-icon-button portfolio-list-item-action"
+                  disabled={portfolio.shared && portfolio.accessLevel !== "FULL"}
                   onClick={() => onRename(portfolio)}
-                  title="Rename portfolio"
+                  title={portfolio.shared && portfolio.accessLevel !== "FULL" ? "Read-only shared portfolio" : "Rename portfolio"}
                   type="button"
                 >
                   <span aria-hidden="true">✎</span>
@@ -108,13 +118,16 @@ export function PortfolioBar({
                 <button
                   aria-label={`Delete ${portfolio.name}`}
                   className="toolbar-icon-button toolbar-icon-button-danger portfolio-list-item-action"
+                  disabled={portfolio.shared}
                   onClick={() => onDelete(portfolio)}
-                  title="Delete portfolio"
+                  title={portfolio.shared ? "Only the owner can delete a portfolio" : "Delete portfolio"}
                   type="button"
                 >
                   <TrashIcon />
                 </button>
               </div>
+            </div>
+              ))}
             </div>
           ))}
         </div>

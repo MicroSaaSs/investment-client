@@ -20,6 +20,8 @@ export function AppWorkspaceContent(props) {
     aiSummaryBusy,
     avgDrawdownPositions,
     currentUser,
+    canWritePortfolio,
+    canWriteSelectedPortfolio,
     dashboardMetrics,
     effectiveSelectedPortfolioIds,
     equityHistory,
@@ -91,6 +93,7 @@ export function AppWorkspaceContent(props) {
           middle={(
             <AppHeaderMiddle
               hasPortfolio={Boolean(selectedPortfolio)}
+              canWritePortfolio={canWriteSelectedPortfolio}
               onAddPosition={onAddPosition}
               onAddTransaction={onAddTransaction}
               onOpenPortfolioSwitch={onOpenPortfolioSwitch}
@@ -104,6 +107,7 @@ export function AppWorkspaceContent(props) {
 
         <TopMenuBar
           hasPortfolio={Boolean(selectedPortfolio)}
+          canWritePortfolio={canWriteSelectedPortfolio}
           onAddPosition={onAddPosition}
           onAddTransaction={onAddTransaction}
           onOpenPortfolioSwitch={onOpenPortfolioSwitch}
@@ -127,6 +131,7 @@ export function AppWorkspaceContent(props) {
             onMobilePositionSummaryMetricsChange={onPortfolioPositionSummaryMetricsChange}
             onReorderPositions={onReorderPositions}
             portfolioId={portfolioId}
+            canWritePortfolio={canWritePortfolio}
             portfolioTabBusy={portfolioTabBusy}
             portfolioTabDataById={portfolioTabDataById}
             portfolios={portfolios}
@@ -158,6 +163,7 @@ export function AppWorkspaceContent(props) {
             activeSubtab={positionsSubtab}
             mobilePositionSummaryMetrics={holdingsPositionSummaryMetrics}
             onAddTransaction={onPositionAddTransaction}
+            canWritePortfolio={canWritePortfolio}
             onDeletePosition={onDeletePosition}
             onDeleteTransaction={onDeleteTransaction}
             onEditPosition={onEditPosition}
@@ -171,6 +177,8 @@ export function AppWorkspaceContent(props) {
         ) : null}
         {portfolios.length && tab === "watchlist" ? (
           <WatchListView
+            canCreateWatch={canWriteSelectedPortfolio}
+            canWritePortfolio={canWritePortfolio}
             onCreateWatch={onCreateWatch}
             onDeleteWatch={onWatchDelete}
             positions={watchlistPositions}

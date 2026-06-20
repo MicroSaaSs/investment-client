@@ -83,29 +83,35 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
             </div>
             <p>{companyLabel(position)}</p>
           </div>
-          <div className="position-detail-title-actions">
-            <button
-              aria-label={`Edit ${position.ticker}`}
-              className="toolbar-icon-button"
-              onClick={() => onEditPosition(position)}
-              title="Edit"
-              type="button"
-            >
-              <span aria-hidden="true">✎</span>
-            </button>
-            <button
-              aria-label={`Delete ${position.ticker}`}
-              className="toolbar-icon-button toolbar-icon-button-danger"
-              onClick={() => {
-                onClose();
-                onDeletePosition(position);
-              }}
-              title="Delete"
-              type="button"
-            >
-              <TrashIcon />
-            </button>
-          </div>
+          {onEditPosition || onDeletePosition ? (
+            <div className="position-detail-title-actions">
+              {onEditPosition ? (
+                <button
+                  aria-label={`Edit ${position.ticker}`}
+                  className="toolbar-icon-button"
+                  onClick={() => onEditPosition(position)}
+                  title="Edit"
+                  type="button"
+                >
+                  <span aria-hidden="true">✎</span>
+                </button>
+              ) : null}
+              {onDeletePosition ? (
+                <button
+                  aria-label={`Delete ${position.ticker}`}
+                  className="toolbar-icon-button toolbar-icon-button-danger"
+                  onClick={() => {
+                    onClose();
+                    onDeletePosition(position);
+                  }}
+                  title="Delete"
+                  type="button"
+                >
+                  <TrashIcon />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <div className="position-detail-grid">
           <div className="position-detail-grid-card">
@@ -188,6 +194,7 @@ function PositionDetailsModal({ position, onClose, onEditPosition, onDeletePosit
 export function PortfolioView({
   portfolios,
   portfolioId,
+  canWritePortfolio = () => true,
   selectedPortfolioIds,
   metrics,
   portfolioTabDataById,
@@ -221,9 +228,11 @@ export function PortfolioView({
         const data = portfolioTabDataById?.[id] || (id === portfolioId ? {metrics, rawPositions: []} : null);
         const portfolioMetrics = data?.metrics || (id === portfolioId ? metrics : null);
         const active = sortPositions((portfolioMetrics?.positions || []).filter((position) => position.mode !== "WATCHLIST"));
+        const writable = canWritePortfolio(id);
         return {
           id,
           portfolio,
+          writable,
           metrics: portfolioMetrics,
           rawPositions: data?.rawPositions || [],
           activePositions: active,
@@ -232,7 +241,7 @@ export function PortfolioView({
         };
       })
       .filter(Boolean);
-  }, [metrics, portfolioId, portfolioTabDataById, portfolios, selectedPortfolioIds]);
+  }, [canWritePortfolio, metrics, portfolioId, portfolioTabDataById, portfolios, selectedPortfolioIds]);
   const primaryGroup = portfolioGroups.find((group) => group.id === portfolioId) || portfolioGroups[0] || null;
   const activePositions = primaryGroup?.activePositions || [];
   const sortedPositions = activePositions;
@@ -352,19 +361,19 @@ export function PortfolioView({
                         {group.activePositions.map((position) => (
                           <button
                             className={`portfolio-bar-position${dropTargetId === position.id ? " is-drop-target" : ""}`}
-                            draggable={!multiPortfolioMode}
+                            draggable={!multiPortfolioMode && group.writable}
                             onDragEnd={() => {
                               setDragPositionId(null);
                               dragPositionIdRef.current = null;
                               setDropTargetId(null);
                             }}
                             onDragOver={(event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               event.preventDefault();
                               setDropTargetId(position.id);
                             }}
                             onDragStart={(event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               setDragPositionId(position.id);
                               dragPositionIdRef.current = position.id;
                               event.dataTransfer.effectAllowed = "move";
@@ -372,7 +381,7 @@ export function PortfolioView({
                               event.dataTransfer.setData("text", position.id);
                             }}
                             onDrop={async (event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               event.preventDefault();
                               const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
                               if (!sourceId) return;
@@ -412,15 +421,15 @@ export function PortfolioView({
                         {group.activePositions.map((position) => (
                           <MobilePositionCard
                             compactStyle="inline"
-                            draggable={!multiPortfolioMode}
+                            draggable={!multiPortfolioMode && group.writable}
                             expanded={expandedMobileCard === `${group.id}:${position.id}`}
                             key={position.id}
                             onDragOver={(event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               event.preventDefault();
                             }}
                             onDragStart={(event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               setDragPositionId(position.id);
                               dragPositionIdRef.current = position.id;
                               event.dataTransfer.effectAllowed = "move";
@@ -432,7 +441,7 @@ export function PortfolioView({
                               dragPositionIdRef.current = null;
                             }}
                             onDrop={async (event) => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               event.preventDefault();
                               const sourceId = dragPositionIdRef.current || dragPositionId || event.dataTransfer.getData("text/plain") || event.dataTransfer.getData("text");
                               if (!sourceId) return;
@@ -441,15 +450,15 @@ export function PortfolioView({
                               await handleDropOnPosition(position.id, sourceId, placement);
                             }}
                             onDragOverCapture={() => {
-                              if (multiPortfolioMode) return;
+                              if (multiPortfolioMode || !group.writable) return;
                               setDropTargetId(position.id);
                             }}
                             onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
-                            onAddTransaction={(item) => onAddTransaction?.(item, group.id)}
-                            onDelete={(item) => onDeletePosition?.(item, group.id)}
-                            onEdit={(item) => onEditPosition?.(item, group.id)}
-                            canMoveUp={!multiPortfolioMode && group.activePositions.findIndex((item) => item.id === position.id) > 0}
-                            canMoveDown={!multiPortfolioMode && group.activePositions.findIndex((item) => item.id === position.id) < group.activePositions.length - 1}
+                            onAddTransaction={group.writable ? (item) => onAddTransaction?.(item, group.id) : null}
+                            onDelete={group.writable ? (item) => onDeletePosition?.(item, group.id) : null}
+                            onEdit={group.writable ? (item) => onEditPosition?.(item, group.id) : null}
+                            canMoveUp={group.writable && !multiPortfolioMode && group.activePositions.findIndex((item) => item.id === position.id) > 0}
+                            canMoveDown={group.writable && !multiPortfolioMode && group.activePositions.findIndex((item) => item.id === position.id) < group.activePositions.length - 1}
                             onMoveUp={() => movePositionByStep(position.id, "up")}
                             onMoveDown={() => movePositionByStep(position.id, "down")}
                             onToggle={() => setExpandedMobileCard((current) => current === `${group.id}:${position.id}` ? null : `${group.id}:${position.id}`)}
@@ -473,7 +482,7 @@ export function PortfolioView({
                     <button className="portfolio-group-toggle" onClick={() => togglePortfolioGroup(group.id)} type="button">
                       <div className="portfolio-group-toggle-copy">
                         <strong>{group.portfolio.name}</strong>
-                        <span>{group.activePositions.length} positions · {compactMoney(group.metrics?.totalValue)} · {pct(group.metrics?.pnlPct || 0)}</span>
+                        <span>{group.activePositions.length} positions · {compactMoney(group.metrics?.totalValue)} · {pct(group.metrics?.pnlPct || 0)}{group.writable ? "" : " · Read only"}</span>
                       </div>
                       <i>{expanded ? "−" : "+"}</i>
                     </button>
@@ -537,13 +546,13 @@ export function PortfolioView({
         ) : null}
       </div>
       <PositionDetailsModal
-        onAddTransaction={(position) => {
+        onAddTransaction={detailPosition && canWritePortfolio(detailPosition.portfolioContextId) ? (position) => {
           setDetailPosition(null);
           onAddTransaction?.(position, position.portfolioContextId);
-        }}
+        } : null}
         onClose={() => setDetailPosition(null)}
-        onDeletePosition={(position) => onDeletePosition?.(position, position.portfolioContextId)}
-        onEditPosition={(position) => onEditPosition?.(position, position.portfolioContextId)}
+        onDeletePosition={detailPosition && canWritePortfolio(detailPosition.portfolioContextId) ? (position) => onDeletePosition?.(position, position.portfolioContextId) : null}
+        onEditPosition={detailPosition && canWritePortfolio(detailPosition.portfolioContextId) ? (position) => onEditPosition?.(position, position.portfolioContextId) : null}
         position={detailPosition}
       />
       {overviewDetailType === "value" ? (

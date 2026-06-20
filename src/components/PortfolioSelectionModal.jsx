@@ -33,10 +33,18 @@ export function PortfolioSelectionModal({
     onClose();
   }
 
+  const portfolioGroups = [
+    {title: "Owned by me", items: portfolios.filter((portfolio) => !portfolio.shared)},
+    {title: "Shared with me", items: portfolios.filter((portfolio) => portfolio.shared)},
+  ].filter((group) => group.items.length);
+
   return (
     <ModalSheet title="Switch portfolio" subtitle={subtitle} onClose={onClose}>
       <div className="portfolio-switch-list">
-        {portfolios.map((portfolio) => {
+        {portfolioGroups.map((group) => (
+          <div className="portfolio-switch-group" key={group.title}>
+            <p className="portfolio-list-group-title">{group.title}</p>
+            {group.items.map((portfolio) => {
           const isCurrent = portfolio.id === portfolioId;
           const isSelected = draftSelectedIds.includes(portfolio.id);
           return (
@@ -46,7 +54,7 @@ export function PortfolioSelectionModal({
             >
               <div className="portfolio-switch-copy">
                 <strong>{portfolio.name}</strong>
-                <span>{isCurrent ? "Current portfolio" : (portfolio.defaultPortfolio ? "Default portfolio" : "Portfolio workspace")}</span>
+                <span>{isCurrent ? "Current portfolio" : portfolio.shared ? `${portfolio.accessLevel === "FULL" ? "Shared full access" : "Shared read only"}${portfolio.ownerEmail ? ` from ${portfolio.ownerEmail}` : ""}` : (portfolio.defaultPortfolio ? "Default portfolio" : "Portfolio workspace")}</span>
               </div>
               <input
                 checked={isSelected}
@@ -55,7 +63,9 @@ export function PortfolioSelectionModal({
               />
             </label>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
       <div className="portfolio-switch-actions">
         <button

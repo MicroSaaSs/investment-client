@@ -1,5 +1,6 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
+import {api} from "../services/api";
 
 function formatExpiry(value) {
   if (!value) return "";
@@ -15,18 +16,43 @@ export function AccountModal({
   linkSession,
   onClose,
   onCreateLinkCode,
+  onFamilyAccessChanged,
   onGoogleCredential,
   onLinkEmail,
   onLinkTelegram,
   onEmailLinkFieldChange,
   onTelegramLinkCodeChange,
+  portfolios = [],
   telegramLinkCode,
 }) {
+  const [familyShares, setFamilyShares] = useState([]);
+  const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
+  const [familyShareForm, setFamilyShareForm] = useState({email: "", accessLevel: "READ", canManageSharing: false, portfolioIds: []});
+  const [familyShareBusy, setFamilyShareBusy] = useState(false);
+  const [familyShareError, setFamilyShareError] = useState("");
+  const [copiedShareId, setCopiedShareId] = useState("");
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [managedOwnerId, setManagedOwnerId] = useState(currentUser?.userId || "");
   const googleLinked = currentUser?.googleLinked ?? currentUser?.authProvider === "GOOGLE";
   const emailLinked = currentUser?.emailLinked ?? Boolean(currentUser?.email && currentUser?.hasPassword);
   const linkedLabel = currentUser?.telegramLinked
     ? `Linked as @${currentUser.telegramUsername || "telegram-user"}`
     : "Not linked yet";
+  const managedAccounts = React.useMemo(() => {
+    const byId = new Map();
+    if (currentUser?.userId) {
+      byId.set(currentUser.userId, {id: currentUser.userId, label: "My account"});
+    }
+    portfolios
+      .filter((portfolio) => portfolio.shared && portfolio.canManageSharing && portfolio.userId)
+      .forEach((portfolio) => {
+        byId.set(portfolio.userId, {
+          id: portfolio.userId,
+          label: portfolio.ownerEmail ? `Shared account: ${portfolio.ownerEmail}` : `Shared account: ${portfolio.userId}`,
+        });
+      });
+    return [...byId.values()];
+  }, [currentUser?.userId, portfolios]);
 
   useEffect(() => {
     if (!googleClientId || googleLinked) return;
@@ -60,6 +86,99 @@ export function AccountModal({
     return () => { cancelled = true; };
   }, [googleClientId, googleLinked, onGoogleCredential]);
 
+  useEffect(() => {
+    if (!managedOwnerId && currentUser?.userId) setManagedOwnerId(currentUser.userId);
+  }, [currentUser?.userId, managedOwnerId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadShares() {
+      try {
+        const [shares, audit] = await Promise.all([
+          api.getAccountShares(managedOwnerId),
+          api.getAccountAudit(),
+        ]);
+        if (!cancelled) {
+          setFamilyShares(shares || []);
+          setAuditEvents(audit || []);
+        }
+      } catch (error) {
+        if (!cancelled) setFamilyShareError(String(error.message || error));
+      }
+    }
+    loadShares();
+    return () => { cancelled = true; };
+  }, [managedOwnerId]);
+
+  async function saveFamilyShare() {
+    const email = familyShareForm.email.trim();
+    if (!email) return;
+    setFamilyShareBusy(true);
+    setFamilyShareError("");
+    try {
+      const saved = await api.saveAccountShare({
+        email,
+        accessLevel: familyShareForm.accessLevel,
+        canManageSharing: familyShareForm.canManageSharing,
+        portfolioIds: familyShareForm.portfolioIds,
+        ownerUserId: managedOwnerId,
+      });
+      setFamilyShares((current) => {
+        const withoutExisting = current.filter((share) => share.id !== saved.id && share.email?.toLowerCase() !== saved.email?.toLowerCase());
+        return [saved, ...withoutExisting];
+      });
+      setFamilyShareForm({email: "", accessLevel: "READ", canManageSharing: false, portfolioIds: []});
+      setAuditEvents(await api.getAccountAudit());
+      await onFamilyAccessChanged?.();
+    } catch (error) {
+      setFamilyShareError(String(error.message || error));
+    } finally {
+      setFamilyShareBusy(false);
+    }
+  }
+
+  async function revokeFamilyShare(share) {
+    if (!share?.id) return;
+    setFamilyShareBusy(true);
+    setFamilyShareError("");
+    try {
+      await api.deleteAccountShare(share.id, managedOwnerId);
+      setFamilyShares((current) => current.filter((item) => item.id !== share.id));
+      setAuditEvents(await api.getAccountAudit());
+      await onFamilyAccessChanged?.();
+    } catch (error) {
+      setFamilyShareError(String(error.message || error));
+    } finally {
+      setFamilyShareBusy(false);
+    }
+  }
+
+  async function copyInviteLink(share) {
+    if (!share?.inviteToken) return;
+    const link = `${window.location.origin}${window.location.pathname}?shareInvite=${encodeURIComponent(share.inviteToken)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedShareId(share.id);
+      window.setTimeout(() => setCopiedShareId((current) => current === share.id ? "" : current), 1600);
+    } catch (error) {
+      setFamilyShareError("Unable to copy invite link");
+    }
+  }
+
+  function toggleSharePortfolio(portfolioId) {
+    setFamilyShareForm((current) => {
+      const nextIds = current.portfolioIds.includes(portfolioId)
+        ? current.portfolioIds.filter((id) => id !== portfolioId)
+        : [...current.portfolioIds, portfolioId];
+      return {...current, portfolioIds: nextIds};
+    });
+  }
+
+  function scopeLabel(share) {
+    if (!share.portfolioIds?.length) return "All portfolios";
+    return `${share.portfolioIds.length} selected portfolio${share.portfolioIds.length === 1 ? "" : "s"}`;
+  }
+
   return (
     <ModalSheet onClose={onClose} subtitle="Manage how this account works across browser and Telegram." title="Account">
       <div className="account-stack">
@@ -72,6 +191,97 @@ export function AccountModal({
             <div><span>Email login</span><strong>{emailLinked ? "Linked" : "Not linked"}</strong></div>
             <div><span>Google</span><strong>{googleLinked ? "Linked" : "Not linked"}</strong></div>
             <div><span>Telegram</span><strong>{linkedLabel}</strong></div>
+          </div>
+        </section>
+
+        <section className="account-panel">
+          <p className="eyebrow">FAMILY ACCESS</p>
+          <h4>Share this account</h4>
+          <p className="account-copy">Give another user access to all portfolios or selected portfolios. Share the invite link after creating access; the invited user must sign in with that email and accept it.</p>
+          {managedAccounts.length > 1 ? (
+            <label className="auth-field">
+              <span>Manage sharing for</span>
+              <select value={managedOwnerId} onChange={(event) => setManagedOwnerId(event.target.value)}>
+                {managedAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>{account.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <div className="account-share-form">
+            <label className="auth-field">
+              <span>User email</span>
+              <input
+                type="email"
+                placeholder="family@example.com"
+                value={familyShareForm.email}
+                onChange={(e) => setFamilyShareForm((current) => ({...current, email: e.target.value}))}
+              />
+            </label>
+            <label className="auth-field">
+              <span>Access</span>
+              <select
+                value={familyShareForm.accessLevel}
+                onChange={(e) => setFamilyShareForm((current) => ({...current, accessLevel: e.target.value}))}
+              >
+                <option value="READ">Read only</option>
+                <option value="FULL">Full access</option>
+              </select>
+            </label>
+            <button className="primary" disabled={familyShareBusy || !familyShareForm.email.trim()} onClick={saveFamilyShare} type="button">
+              {familyShareBusy ? "Saving..." : "Grant access"}
+            </button>
+          </div>
+          <label className="checkbox-row account-share-manage-row">
+            <input
+              checked={familyShareForm.canManageSharing}
+              onChange={(event) => setFamilyShareForm((current) => ({...current, canManageSharing: event.target.checked}))}
+              type="checkbox"
+            />
+            <span>Can manage sharing</span>
+          </label>
+          <div className="account-share-scope">
+            <div className="account-share-scope-head">
+              <strong>Portfolio scope</strong>
+              <button className="ghost" onClick={() => setFamilyShareForm((current) => ({...current, portfolioIds: []}))} type="button">
+                All portfolios
+              </button>
+            </div>
+            <div className="account-share-scope-list">
+              {ownedPortfolios.map((portfolio) => (
+                <label className="checkbox-row" key={portfolio.id}>
+                  <input
+                    checked={!familyShareForm.portfolioIds.length || familyShareForm.portfolioIds.includes(portfolio.id)}
+                    onChange={() => toggleSharePortfolio(portfolio.id)}
+                    type="checkbox"
+                  />
+                  <span>{portfolio.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {familyShareError ? <p className="account-inline-error">{familyShareError}</p> : null}
+          <div className="account-share-list">
+            {familyShares.length ? familyShares.map((share) => (
+              <div className="account-share-row" key={share.id}>
+                <div>
+                  <strong>{share.email}</strong>
+                  <span>{share.status === "ACTIVE" ? "Active user" : "Pending acceptance"} | {share.accessLevel === "FULL" ? "Full access" : "Read only"} | {scopeLabel(share)}{share.canManageSharing ? " | Can manage sharing" : ""}</span>
+                </div>
+                <div className="account-share-row-actions">
+                  {share.inviteToken ? (
+                    <button className="ghost" disabled={familyShareBusy} onClick={() => copyInviteLink(share)} type="button">
+                      {copiedShareId === share.id ? "Copied" : "Copy invite"}
+                    </button>
+                  ) : null}
+                  <button className="ghost" disabled={familyShareBusy} onClick={() => revokeFamilyShare(share)} type="button">
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p className="account-empty-note">No family access yet.</p>
+            )}
           </div>
         </section>
 
@@ -101,6 +311,21 @@ export function AccountModal({
             <button className="primary" disabled={authBusy || !emailLinkForm.email.trim() || !emailLinkForm.password.trim()} onClick={onLinkEmail} type="button">
               {authBusy ? "Saving..." : emailLinked ? "Save email login" : "Link email login"}
             </button>
+          </div>
+        </section>
+
+        <section className="account-panel">
+          <p className="eyebrow">AUDIT LOG</p>
+          <h4>Recent account activity</h4>
+          <div className="account-audit-list">
+            {auditEvents.length ? auditEvents.slice(0, 12).map((event) => (
+              <div className="account-audit-row" key={event.id || `${event.createdAt}:${event.summary}`}>
+                <strong>{event.summary || `${event.action} ${event.entityType}`}</strong>
+                <span>{event.createdAt ? new Date(event.createdAt).toLocaleString() : "Just now"} | Actor {event.actorUserId || "unknown"}</span>
+              </div>
+            )) : (
+              <p className="account-empty-note">No account activity recorded yet.</p>
+            )}
           </div>
         </section>
 

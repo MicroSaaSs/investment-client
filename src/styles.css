@@ -919,6 +919,23 @@ button {
   gap: 10px;
   align-items: center;
 }
+.portfolio-list-group,
+.portfolio-switch-group {
+  display: grid;
+  gap: 8px;
+}
+.portfolio-list-group + .portfolio-list-group,
+.portfolio-switch-group + .portfolio-switch-group {
+  margin-top: 8px;
+}
+.portfolio-list-group-title {
+  margin: 2px 0 0;
+  color: #64789e;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
 .portfolio-list-item-actions {
   display: flex;
   gap: 8px;
@@ -2595,7 +2612,8 @@ tbody td > small {
 }
 .auth-form input,
 .modal-form input,
-.modal-form select {
+.modal-form select,
+.auth-field select {
   width: 100%;
   min-height: 44px;
   padding: 10px 14px;
@@ -3067,6 +3085,121 @@ tbody td > small {
 .account-merge-box {
   display: grid;
   gap: 14px;
+}
+.account-share-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto;
+  gap: 12px;
+  align-items: end;
+}
+.account-share-manage-row {
+  align-self: start;
+}
+.account-share-scope {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #dde6f3;
+}
+.account-share-scope-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.account-share-scope-head strong {
+  font-size: 14px;
+}
+.account-share-scope-head .ghost {
+  min-height: 34px;
+  padding: 7px 12px;
+}
+.account-share-scope-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.account-share-form .primary {
+  min-height: 48px;
+  padding: 10px 18px;
+  white-space: nowrap;
+}
+.account-share-list {
+  display: grid;
+  gap: 10px;
+}
+.account-share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #dde6f3;
+}
+.account-share-row strong,
+.account-share-row span {
+  display: block;
+}
+.account-share-row strong {
+  font-size: 15px;
+}
+.account-share-row span {
+  margin-top: 4px;
+  color: #70819d;
+  font-size: 13px;
+}
+.account-share-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.account-share-row .ghost {
+  min-height: 38px;
+  padding: 8px 14px;
+}
+.account-share-row .ghost:last-child {
+  color: #a2343f;
+}
+.account-inline-error {
+  margin: 0;
+  color: #a2343f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.account-empty-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px dashed #cdd9eb;
+  color: #70819d;
+}
+.account-audit-list {
+  display: grid;
+  gap: 8px;
+}
+.account-audit-row {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #dde6f3;
+}
+.account-audit-row strong,
+.account-audit-row span {
+  display: block;
+}
+.account-audit-row strong {
+  font-size: 14px;
+}
+.account-audit-row span {
+  margin-top: 4px;
+  color: #70819d;
+  font-size: 12px;
 }
 .account-grid {
   display: grid;
@@ -3547,6 +3680,22 @@ tbody td > small {
   }
   .account-grid {
     grid-template-columns: 1fr;
+  }
+  .account-share-form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .account-share-row {
+    grid-template-columns: 1fr;
+  }
+  .account-share-row-actions {
+    justify-content: flex-start;
+  }
+  .account-share-scope-list {
+    grid-template-columns: 1fr;
+  }
+  .account-share-row .ghost {
+    justify-self: start;
   }
   .header-actions {
     width: 100%;

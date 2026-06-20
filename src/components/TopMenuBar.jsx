@@ -3,6 +3,7 @@ import React from "react";
 export function TopMenuBar({
   embedded = false,
   hasPortfolio,
+  canWritePortfolio = true,
   onAddPosition,
   onAddTransaction,
   onOpenPortfolioSwitch,
@@ -24,9 +25,9 @@ export function TopMenuBar({
           <button
             aria-label="Add position"
             className="top-menu-action-button"
-            disabled={!hasPortfolio}
+            disabled={!hasPortfolio || !canWritePortfolio}
             onClick={onAddPosition}
-            title="Add position"
+            title={!canWritePortfolio ? "Read-only shared portfolio" : "Add position"}
             type="button"
           >
             <span aria-hidden="true" className="top-menu-action-icon">💼</span>
@@ -36,9 +37,9 @@ export function TopMenuBar({
           <button
             aria-label="Add transaction"
             className="top-menu-action-button"
-            disabled={!hasPortfolio}
+            disabled={!hasPortfolio || !canWritePortfolio}
             onClick={onAddTransaction}
-            title="Add transaction"
+            title={!canWritePortfolio ? "Read-only shared portfolio" : "Add transaction"}
             type="button"
           >
             <span aria-hidden="true" className="top-menu-action-icon">🧾</span>

@@ -3,6 +3,7 @@ import {TopMenuBar} from "./TopMenuBar";
 
 export function AppHeaderMiddle({
   hasPortfolio,
+  canWritePortfolio,
   onAddPosition,
   onAddTransaction,
   onOpenPortfolioSwitch,
@@ -11,6 +12,7 @@ export function AppHeaderMiddle({
   return (
     <TopMenuBar
       embedded
+      canWritePortfolio={canWritePortfolio}
       hasPortfolio={hasPortfolio}
       onAddPosition={onAddPosition}
       onAddTransaction={onAddTransaction}

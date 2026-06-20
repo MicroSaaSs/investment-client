@@ -42,6 +42,7 @@ export function useAuthFlow({
           try {
             const user = await api.getCurrentUser();
             setCurrentUser(user);
+            await acceptShareInviteFromUrl();
             await loadPortfoliosRef.current();
             return;
           } catch (tokenError) {
@@ -57,6 +58,7 @@ export function useAuthFlow({
           const authResponse = await authTelegramWithRetry(telegramInitData);
           setCurrentUser(authResponse);
           onErrorRef.current("");
+          await acceptShareInviteFromUrl();
           await loadPortfoliosRef.current();
         }
       } catch (error) {
@@ -91,6 +93,7 @@ export function useAuthFlow({
           try {
             const authResponse = await api.authGoogle(response.credential);
             setCurrentUser(authResponse);
+            await acceptShareInviteFromUrl();
             await loadPortfoliosRef.current();
           } catch (error) {
             onErrorRef.current(String(error.message || error));
@@ -143,6 +146,7 @@ export function useAuthFlow({
         ? await api.register(authForm)
         : await api.login({email: authForm.email, password: authForm.password});
       setCurrentUser(authResponse);
+      await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
       onError(humanizeTelegramAuthError(error));
@@ -180,6 +184,7 @@ export function useAuthFlow({
         : await authTelegramWithRetry(telegramInitData);
       setCurrentUser(authResponse);
       setTelegramLinkCode("");
+      await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
       onError(humanizeTelegramAuthError(error));
@@ -197,6 +202,7 @@ export function useAuthFlow({
       setCurrentUser(authResponse);
       setTelegramLinkCode("");
       setLinkSession(null);
+      await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
       onError(String(error.message || error));
@@ -212,6 +218,7 @@ export function useAuthFlow({
       const authResponse = await api.linkEmail(emailLinkForm);
       setCurrentUser(authResponse);
       setEmailLinkForm({email: authResponse.email || "", password: ""});
+      await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
       onError(String(error.message || error));
@@ -226,6 +233,7 @@ export function useAuthFlow({
     try {
       const authResponse = await api.linkGoogle(credential);
       setCurrentUser(authResponse);
+      await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
       onError(String(error.message || error));
@@ -255,6 +263,22 @@ export function useAuthFlow({
     onAuthenticated?.(null);
     onError("");
     onLogoutCleanup?.();
+  }
+
+  async function acceptShareInviteFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("shareInvite");
+    if (!token) return;
+    try {
+      await api.acceptAccountShareInvite(token);
+      params.delete("shareInvite");
+      const nextSearch = params.toString();
+      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash || ""}`;
+      window.history.replaceState({}, "", nextUrl);
+      onErrorRef.current("");
+    } catch (error) {
+      onErrorRef.current(`Share invite was not accepted: ${String(error.message || error)}`);
+    }
   }
 
   return {

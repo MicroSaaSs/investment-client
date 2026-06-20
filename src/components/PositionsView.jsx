@@ -158,6 +158,7 @@ const HOLDINGS_METRIC_COLUMNS = [
 
 export function PositionsView({
   activeSubtab = "positions",
+  canWritePortfolio = () => true,
   mobilePositionSummaryMetrics,
   onMobilePositionSummaryMetricsChange,
   onReorderPositions,
@@ -187,7 +188,11 @@ export function PositionsView({
       .filter(Boolean)
   );
   const multiPortfolioView = selectedPortfolioContextIds.size > 1;
-  const canReorderPositions = Boolean(onReorderPositions && !multiPortfolioView);
+  const canWriteItem = React.useCallback(
+    (item) => canWritePortfolio(item?.portfolioContextId || item?.portfolioId),
+    [canWritePortfolio]
+  );
+  const canReorderPositions = Boolean(onReorderPositions && !multiPortfolioView && sortedPositions.every(canWriteItem));
   const isColumnVisible = React.useCallback((columnId) => visibleColumns.has(columnId), [visibleColumns]);
   const positionsById = React.useMemo(() => {
     const map = new Map();
@@ -506,8 +511,9 @@ export function PositionsView({
                       <button
                         aria-label={`Edit ${position.ticker} holding`}
                         className="toolbar-icon-button"
+                        disabled={!canWriteItem(position)}
                         onClick={() => onEditPosition(position)}
-                        title="Edit holding"
+                        title={canWriteItem(position) ? "Edit holding" : "Read-only shared portfolio"}
                         type="button"
                       >
                         <span aria-hidden="true">✎</span>
@@ -515,8 +521,9 @@ export function PositionsView({
                       <button
                         aria-label={`Delete ${position.ticker} holding`}
                         className="toolbar-icon-button toolbar-icon-button-danger"
+                        disabled={!canWriteItem(position)}
                         onClick={() => onDeletePosition(position)}
-                        title="Delete holding"
+                        title={canWriteItem(position) ? "Delete holding" : "Read-only shared portfolio"}
                         type="button"
                       >
                         <TrashIcon />
@@ -560,9 +567,9 @@ export function PositionsView({
                 if (canReorderPositions) setDropTargetId(position.id);
               }}
               onDragLeave={() => setDropTargetId((current) => (current === position.id ? null : current))}
-              onAddTransaction={onAddTransaction}
-              onDelete={onDeletePosition}
-              onEdit={onEditPosition}
+              onAddTransaction={canWriteItem(position) ? onAddTransaction : null}
+              onDelete={canWriteItem(position) ? onDeletePosition : null}
+              onEdit={canWriteItem(position) ? onEditPosition : null}
               canMoveUp={canReorderPositions && sortedPositions.findIndex((item) => item.id === position.id) > 0}
               canMoveDown={canReorderPositions && sortedPositions.findIndex((item) => item.id === position.id) < sortedPositions.length - 1}
               onMoveUp={() => movePositionByStep(position.id, "up")}
@@ -602,8 +609,8 @@ export function PositionsView({
                   <td className="table-center">{money(transaction.fees, 2)}</td>
                   <td className="table-center">
                     <div className="row-actions row-actions-center">
-                      <button className="mini-button" onClick={() => onEditTransaction(transaction)} type="button">Edit</button>
-                      <button className="mini-button mini-button-danger" onClick={() => onDeleteTransaction(transaction)} type="button">Delete</button>
+                      <button className="mini-button" disabled={!canWriteItem(transaction)} onClick={() => onEditTransaction(transaction)} type="button">Edit</button>
+                      <button className="mini-button mini-button-danger" disabled={!canWriteItem(transaction)} onClick={() => onDeleteTransaction(transaction)} type="button">Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -629,8 +636,9 @@ export function PositionsView({
                   <button
                     aria-label={`Edit ${transaction.ticker} transaction`}
                     className="toolbar-icon-button mobile-transaction-action"
+                    disabled={!canWriteItem(transaction)}
                     onClick={() => onEditTransaction(transaction)}
-                    title="Edit transaction"
+                    title={canWriteItem(transaction) ? "Edit transaction" : "Read-only shared portfolio"}
                     type="button"
                   >
                     <span aria-hidden="true">✎</span>
@@ -638,8 +646,9 @@ export function PositionsView({
                   <button
                     aria-label={`Delete ${transaction.ticker} transaction`}
                     className="toolbar-icon-button toolbar-icon-button-danger mobile-transaction-action"
+                    disabled={!canWriteItem(transaction)}
                     onClick={() => onDeleteTransaction(transaction)}
-                    title="Delete transaction"
+                    title={canWriteItem(transaction) ? "Delete transaction" : "Read-only shared portfolio"}
                     type="button"
                   >
                     <TrashIcon />

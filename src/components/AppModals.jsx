@@ -10,6 +10,7 @@ export function AppModals({
   activeRawPositions,
   activeRawPositionsByPortfolio,
   authBusy,
+  canWritePortfolio = () => true,
   currentUser,
   emailLinkForm,
   googleClientId,
@@ -28,6 +29,7 @@ export function AppModals({
   onEditTransaction,
   onEmailLinkFieldChange,
   onGoogleCredential,
+  onFamilyAccessChanged,
   onLinkEmail,
   onLinkTelegram,
   onRenamePortfolio,
@@ -43,6 +45,10 @@ export function AppModals({
 }) {
   const modalPortfolioId = modal?.data?.portfolioId || modal?.data?.portfolioContextId || portfolioId;
   const modalPortfolioLocked = Boolean(modal?.data?.lockedPortfolioId);
+  const writablePortfolioOptions = portfolioOptions.filter((portfolio) => canWritePortfolio(portfolio.id));
+  const modalPortfolioOptions = modalPortfolioLocked
+    ? portfolioOptions
+    : writablePortfolioOptions;
 
   return (
     <>
@@ -66,11 +72,13 @@ export function AppModals({
           linkSession={linkSession}
           onClose={onClose}
           onCreateLinkCode={onCreateLinkCode}
+          onFamilyAccessChanged={onFamilyAccessChanged}
           onEmailLinkFieldChange={onEmailLinkFieldChange}
           onGoogleCredential={onGoogleCredential}
           onLinkEmail={onLinkEmail}
           onLinkTelegram={onLinkTelegram}
           onTelegramLinkCodeChange={onTelegramLinkCodeChange}
+          portfolios={portfolios}
           telegramLinkCode={telegramLinkCode}
         />
       ) : null}
@@ -98,7 +106,7 @@ export function AppModals({
           onClose={onClose}
           onSubmit={onCreatePosition}
           portfolioLocked={modalPortfolioLocked}
-          portfolioOptions={portfolioOptions}
+          portfolioOptions={modalPortfolioOptions}
           positions={positionModalPositions}
           positionsByPortfolio={positionModalPositionsByPortfolio}
         />
@@ -110,7 +118,7 @@ export function AppModals({
           onClose={onClose}
           onSubmit={onCreatePosition}
           portfolioLocked={modalPortfolioLocked}
-          portfolioOptions={portfolioOptions}
+          portfolioOptions={modalPortfolioOptions}
           positions={positionModalPositions}
           positionsByPortfolio={positionModalPositionsByPortfolio}
           variant="watchlist"
@@ -125,7 +133,7 @@ export function AppModals({
           positions={activeRawPositions}
           positionsByPortfolio={activeRawPositionsByPortfolio}
           portfolioLocked={modalPortfolioLocked}
-          portfolioOptions={portfolioOptions}
+          portfolioOptions={modalPortfolioOptions}
           transaction={modal?.type === "transaction" ? modal.data : null}
         />
       ) : null}
