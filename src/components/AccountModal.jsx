@@ -26,13 +26,14 @@ export function AccountModal({
   telegramLinkCode,
 }) {
   const [familyShares, setFamilyShares] = useState([]);
-  const [familyShareForm, setFamilyShareForm] = useState({email: "", accessLevel: "READ", canManageSharing: false, portfolioIds: []});
+  const [familyShareForm, setFamilyShareForm] = useState({email: "", accessLevel: "READ", canManageSharing: false, allPortfolios: true, portfolioIds: []});
   const [familyShareBusy, setFamilyShareBusy] = useState(false);
   const [familyShareError, setFamilyShareError] = useState("");
   const [copiedShareId, setCopiedShareId] = useState("");
   const [auditEvents, setAuditEvents] = useState([]);
   const [managedOwnerId, setManagedOwnerId] = useState(currentUser?.userId || "");
   const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
+  const hasPortfolioScopeSelection = familyShareForm.allPortfolios || familyShareForm.portfolioIds.length > 0;
   const googleLinked = currentUser?.googleLinked ?? currentUser?.authProvider === "GOOGLE";
   const emailLinked = currentUser?.emailLinked ?? Boolean(currentUser?.email && currentUser?.hasPassword);
   const linkedLabel = currentUser?.telegramLinked
@@ -113,6 +114,10 @@ export function AccountModal({
   async function saveFamilyShare() {
     const email = familyShareForm.email.trim();
     if (!email) return;
+    if (!hasPortfolioScopeSelection) {
+      setFamilyShareError("Select at least one portfolio or choose All portfolios.");
+      return;
+    }
     setFamilyShareBusy(true);
     setFamilyShareError("");
     try {
@@ -120,14 +125,14 @@ export function AccountModal({
         email,
         accessLevel: familyShareForm.accessLevel,
         canManageSharing: familyShareForm.canManageSharing,
-        portfolioIds: familyShareForm.portfolioIds,
+        portfolioIds: familyShareForm.allPortfolios ? [] : familyShareForm.portfolioIds,
         ownerUserId: managedOwnerId,
       });
       setFamilyShares((current) => {
         const withoutExisting = current.filter((share) => share.id !== saved.id && share.email?.toLowerCase() !== saved.email?.toLowerCase());
         return [saved, ...withoutExisting];
       });
-      setFamilyShareForm({email: "", accessLevel: "READ", canManageSharing: false, portfolioIds: []});
+      setFamilyShareForm({email: "", accessLevel: "READ", canManageSharing: false, allPortfolios: true, portfolioIds: []});
       setAuditEvents(await api.getAccountAudit());
       await onFamilyAccessChanged?.();
     } catch (error) {
@@ -168,12 +173,12 @@ export function AccountModal({
   function toggleSharePortfolio(portfolioId) {
     setFamilyShareForm((current) => {
       const allPortfolioIds = ownedPortfolios.map((portfolio) => portfolio.id);
-      const currentIds = current.portfolioIds.length ? current.portfolioIds : allPortfolioIds;
+      const currentIds = current.allPortfolios ? allPortfolioIds : current.portfolioIds;
       const nextIds = currentIds.includes(portfolioId)
         ? currentIds.filter((id) => id !== portfolioId)
         : [...currentIds, portfolioId];
-      const normalizedNextIds = nextIds.length === allPortfolioIds.length ? [] : nextIds;
-      return {...current, portfolioIds: normalizedNextIds};
+      const allSelected = nextIds.length === allPortfolioIds.length;
+      return {...current, allPortfolios: allSelected, portfolioIds: allSelected ? [] : nextIds};
     });
   }
 
@@ -231,7 +236,7 @@ export function AccountModal({
                 <option value="FULL">Full access</option>
               </select>
             </label>
-            <button className="primary" disabled={familyShareBusy || !familyShareForm.email.trim()} onClick={saveFamilyShare} type="button">
+            <button className="primary" disabled={familyShareBusy || !familyShareForm.email.trim() || !hasPortfolioScopeSelection} onClick={saveFamilyShare} type="button">
               {familyShareBusy ? "Saving..." : "Grant access"}
             </button>
           </div>
@@ -246,7 +251,7 @@ export function AccountModal({
           <div className="account-share-scope">
             <div className="account-share-scope-head">
               <strong>Portfolio scope</strong>
-              <button className="ghost" onClick={() => setFamilyShareForm((current) => ({...current, portfolioIds: []}))} type="button">
+              <button className="ghost" onClick={() => setFamilyShareForm((current) => ({...current, allPortfolios: true, portfolioIds: []}))} type="button">
                 All portfolios
               </button>
             </div>
@@ -254,7 +259,7 @@ export function AccountModal({
               {ownedPortfolios.map((portfolio) => (
                 <label className="checkbox-row" key={portfolio.id}>
                   <input
-                    checked={!familyShareForm.portfolioIds.length || familyShareForm.portfolioIds.includes(portfolio.id)}
+                    checked={familyShareForm.allPortfolios || familyShareForm.portfolioIds.includes(portfolio.id)}
                     onChange={() => toggleSharePortfolio(portfolio.id)}
                     type="checkbox"
                   />
