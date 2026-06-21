@@ -3132,16 +3132,22 @@ tbody td > small {
   align-self: start;
   justify-content: flex-start;
   gap: 14px;
-  min-height: 58px;
-  padding: 14px 16px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(18, 48, 95, 0.04);
 }
 .account-share-manage-row span {
   max-width: none;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.02em;
   text-transform: none;
+  white-space: nowrap;
 }
 .account-share-manage-row input {
   flex: 0 0 auto;
