@@ -3129,7 +3129,9 @@ tbody td > small {
   align-items: end;
 }
 .account-share-manage-row {
+  display: inline-flex !important;
   align-self: start;
+  align-items: center;
   justify-content: flex-start;
   gap: 14px;
   width: fit-content;
@@ -3151,7 +3153,7 @@ tbody td > small {
 }
 .account-share-manage-row input {
   flex: 0 0 auto;
-  margin-top: 1px;
+  margin: 0;
 }
 .account-share-scope {
   display: grid;

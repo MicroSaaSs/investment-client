@@ -167,10 +167,13 @@ export function AccountModal({
 
   function toggleSharePortfolio(portfolioId) {
     setFamilyShareForm((current) => {
-      const nextIds = current.portfolioIds.includes(portfolioId)
-        ? current.portfolioIds.filter((id) => id !== portfolioId)
-        : [...current.portfolioIds, portfolioId];
-      return {...current, portfolioIds: nextIds};
+      const allPortfolioIds = ownedPortfolios.map((portfolio) => portfolio.id);
+      const currentIds = current.portfolioIds.length ? current.portfolioIds : allPortfolioIds;
+      const nextIds = currentIds.includes(portfolioId)
+        ? currentIds.filter((id) => id !== portfolioId)
+        : [...currentIds, portfolioId];
+      const normalizedNextIds = nextIds.length === allPortfolioIds.length ? [] : nextIds;
+      return {...current, portfolioIds: normalizedNextIds};
     });
   }
 
