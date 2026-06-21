@@ -26,13 +26,13 @@ export function AccountModal({
   telegramLinkCode,
 }) {
   const [familyShares, setFamilyShares] = useState([]);
-  const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
   const [familyShareForm, setFamilyShareForm] = useState({email: "", accessLevel: "READ", canManageSharing: false, portfolioIds: []});
   const [familyShareBusy, setFamilyShareBusy] = useState(false);
   const [familyShareError, setFamilyShareError] = useState("");
   const [copiedShareId, setCopiedShareId] = useState("");
   const [auditEvents, setAuditEvents] = useState([]);
   const [managedOwnerId, setManagedOwnerId] = useState(currentUser?.userId || "");
+  const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
   const googleLinked = currentUser?.googleLinked ?? currentUser?.authProvider === "GOOGLE";
   const emailLinked = currentUser?.emailLinked ?? Boolean(currentUser?.email && currentUser?.hasPassword);
   const linkedLabel = currentUser?.telegramLinked
