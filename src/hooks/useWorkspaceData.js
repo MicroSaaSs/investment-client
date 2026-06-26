@@ -104,10 +104,14 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
     });
   }
 
-  async function refreshEquityHistory(id = portfolioId, range = equityRange, mode = equityMode) {
+  async function refreshEquityHistory(id = portfolioId, range = equityRange, mode = equityMode, options = {}) {
     const ids = [...new Set((Array.isArray(id) ? id : [id]).filter(Boolean))];
     if (!ids.length) return;
     const requestKey = `${ids.join(",")}:${range}:${mode}`;
+    const force = options?.force === true;
+    if (!force && equityHistoryRequestRef.current.key === requestKey && equityHistory) {
+      return;
+    }
     if (equityHistoryRequestRef.current.controller) {
       equityHistoryRequestRef.current.controller.abort();
     }
@@ -261,7 +265,7 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
     if (!id) return;
     await Promise.all([
       refreshPortfolioBaseData(id),
-      refreshEquityHistory(id),
+      refreshEquityHistory(id, equityRange, equityMode, {force: true}),
     ]);
   }
 
