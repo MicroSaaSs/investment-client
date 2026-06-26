@@ -3266,6 +3266,14 @@ tbody td > small {
   border: 1px dashed #cdd9eb;
   color: #70819d;
 }
+.account-audit-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+.account-audit-actions .ghost {
+  min-height: 42px;
+  padding: 10px 16px;
+}
 .account-audit-list {
   display: grid;
   gap: 8px;

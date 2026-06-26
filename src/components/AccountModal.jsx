@@ -39,6 +39,7 @@ export function AccountModal({
   const [familyShareError, setFamilyShareError] = useState("");
   const [copiedShareId, setCopiedShareId] = useState("");
   const [auditEvents, setAuditEvents] = useState([]);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [managedOwnerId, setManagedOwnerId] = useState(currentUser?.userId || "");
   const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
   const hasPortfolioScopeSelection = familyShareForm.allPortfolios || familyShareForm.portfolioIds.length > 0;
@@ -379,15 +380,11 @@ export function AccountModal({
         <section className="account-panel">
           <p className="eyebrow">AUDIT LOG</p>
           <h4>Recent account activity</h4>
-          <div className="account-audit-list">
-            {auditEvents.length ? auditEvents.slice(0, 12).map((event) => (
-              <div className="account-audit-row" key={event.id || `${event.createdAt}:${event.summary}`}>
-                <strong>{event.summary || `${event.action} ${event.entityType}`}</strong>
-                <span>{event.createdAt ? new Date(event.createdAt).toLocaleString() : "Just now"} | Actor {event.actorUserId || "unknown"}</span>
-              </div>
-            )) : (
-              <p className="account-empty-note">No account activity recorded yet.</p>
-            )}
+          <p className="account-copy">Open the full audit stream in a dedicated modal instead of mixing it into the account settings form.</p>
+          <div className="account-audit-actions">
+            <button className="ghost" onClick={() => setAuditModalOpen(true)} type="button">
+              {auditEvents.length ? `View audit log (${auditEvents.length})` : "View audit log"}
+            </button>
           </div>
         </section>
 
@@ -451,6 +448,24 @@ export function AccountModal({
           )}
         </section>
       </div>
+      {auditModalOpen ? (
+        <ModalSheet
+          title="Audit Log"
+          subtitle="Recent account activity"
+          onClose={() => setAuditModalOpen(false)}
+        >
+          <div className="account-audit-list">
+            {auditEvents.length ? auditEvents.map((event) => (
+              <div className="account-audit-row" key={event.id || `${event.createdAt}:${event.summary}`}>
+                <strong>{event.summary || `${event.action} ${event.entityType}`}</strong>
+                <span>{event.createdAt ? new Date(event.createdAt).toLocaleString() : "Just now"} | Actor {event.actorUserId || "unknown"}</span>
+              </div>
+            )) : (
+              <p className="account-empty-note">No account activity recorded yet.</p>
+            )}
+          </div>
+        </ModalSheet>
+      ) : null}
     </ModalSheet>
   );
 }

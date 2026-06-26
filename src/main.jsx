@@ -59,7 +59,6 @@ function App() {
     equityMode,
     equityRange,
     onError: setError,
-    tab,
   });
   const {
     authBusy,
@@ -353,9 +352,12 @@ function App() {
   }, [newsFilters.period, newsFilters.ticker, portfolioId, selectedHoldingPortfolioKey, tab]);
 
   useEffect(() => {
-    if (!portfolioId || tab !== "dashboard" || selectedHoldingPortfolioIds.length <= 1) return;
-    ensurePortfolioTabSelectionLoaded(selectedHoldingPortfolioIds, portfolioId);
-    refreshEquityHistory(selectedHoldingPortfolioIds, equityRange, equityMode).catch((error) => {
+    if (!portfolioId || tab !== "dashboard") return;
+    const idsToLoad = selectedHoldingPortfolioIds.length > 1 ? selectedHoldingPortfolioIds : portfolioId;
+    if (selectedHoldingPortfolioIds.length > 1) {
+      ensurePortfolioTabSelectionLoaded(selectedHoldingPortfolioIds, portfolioId);
+    }
+    refreshEquityHistory(idsToLoad, equityRange, equityMode).catch((error) => {
       setError(String(error.message || error));
     });
   }, [equityMode, equityRange, portfolioId, selectedHoldingPortfolioKey, tab]);

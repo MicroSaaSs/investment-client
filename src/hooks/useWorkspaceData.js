@@ -8,7 +8,7 @@ function isAbortError(error) {
   return error?.name === "AbortError";
 }
 
-export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
+export function useWorkspaceData({equityMode, equityRange, onError}) {
   const [portfolios, setPortfolios] = useState([]);
   const [portfolioId, setPortfolioId] = useState("");
   const [portfoliosBusy, setPortfoliosBusy] = useState(false);
@@ -24,19 +24,13 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsFilters, setNewsFilters] = useState(DEFAULT_NEWS_FILTERS);
   const equityHistoryRequestRef = useRef({controller: null, key: ""});
+  const equityHistoryCacheRef = useRef(new Map());
   const portfolioTabRequestRef = useRef({requestId: 0});
 
   useEffect(() => {
     if (!portfolioId) return;
     refreshPortfolioBaseData(portfolioId).catch((error) => onError?.(String(error.message || error)));
   }, [portfolioId]);
-
-  useEffect(() => {
-    if (!portfolioId || tab !== "dashboard") return;
-    refreshEquityHistory(portfolioId, equityRange, equityMode).catch((error) => {
-      if (!isAbortError(error)) onError?.(String(error.message || error));
-    });
-  }, [equityMode, equityRange, portfolioId, tab]);
 
   const loadPortfolios = useCallback(async function loadPortfolios() {
     setPortfoliosBusy(true);
@@ -109,6 +103,15 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
     if (!ids.length) return;
     const requestKey = `${ids.join(",")}:${range}:${mode}`;
     const force = options?.force === true;
+    const cachedHistory = equityHistoryCacheRef.current.get(requestKey);
+    if (!force && cachedHistory) {
+      equityHistoryRequestRef.current = {controller: null, key: requestKey};
+      startTransition(() => {
+        setEquityHistory(cachedHistory);
+        setEquityHistoryBusy(false);
+      });
+      return cachedHistory;
+    }
     if (!force && equityHistoryRequestRef.current.key === requestKey && equityHistory) {
       return;
     }
@@ -124,6 +127,7 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
       );
       const history = mergeEquityHistoryResponses(responses, range, mode);
       if (equityHistoryRequestRef.current.key !== requestKey) return;
+      equityHistoryCacheRef.current.set(requestKey, history || null);
       startTransition(() => {
         setEquityHistory(history || null);
       });
@@ -330,6 +334,7 @@ export function useWorkspaceData({equityMode, equityRange, onError, tab}) {
     if (equityHistoryRequestRef.current.controller) {
       equityHistoryRequestRef.current.controller.abort();
     }
+    equityHistoryCacheRef.current.clear();
     newsAutoRequestState.clear();
     setPortfolios([]);
     setPortfolioId("");
