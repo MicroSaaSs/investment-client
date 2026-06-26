@@ -26,7 +26,15 @@ export function AccountModal({
   telegramLinkCode,
 }) {
   const [familyShares, setFamilyShares] = useState([]);
-  const [familyShareForm, setFamilyShareForm] = useState({email: "", accessLevel: "READ", canManageSharing: false, allPortfolios: true, portfolioIds: []});
+  const [familyShareForm, setFamilyShareForm] = useState({
+    inviteType: "EMAIL",
+    email: "",
+    telegramUsername: "",
+    accessLevel: "READ",
+    canManageSharing: false,
+    allPortfolios: true,
+    portfolioIds: []
+  });
   const [familyShareBusy, setFamilyShareBusy] = useState(false);
   const [familyShareError, setFamilyShareError] = useState("");
   const [copiedShareId, setCopiedShareId] = useState("");
@@ -34,6 +42,9 @@ export function AccountModal({
   const [managedOwnerId, setManagedOwnerId] = useState(currentUser?.userId || "");
   const ownedPortfolios = portfolios.filter((portfolio) => portfolio.userId === managedOwnerId);
   const hasPortfolioScopeSelection = familyShareForm.allPortfolios || familyShareForm.portfolioIds.length > 0;
+  const shareTargetValue = familyShareForm.inviteType === "TELEGRAM"
+    ? familyShareForm.telegramUsername.trim()
+    : familyShareForm.email.trim();
   const googleLinked = currentUser?.googleLinked ?? currentUser?.authProvider === "GOOGLE";
   const emailLinked = currentUser?.emailLinked ?? Boolean(currentUser?.email && currentUser?.hasPassword);
   const linkedLabel = currentUser?.telegramLinked
@@ -112,8 +123,7 @@ export function AccountModal({
   }, [managedOwnerId]);
 
   async function saveFamilyShare() {
-    const email = familyShareForm.email.trim();
-    if (!email) return;
+    if (!shareTargetValue) return;
     if (!hasPortfolioScopeSelection) {
       setFamilyShareError("Select at least one portfolio or choose All portfolios.");
       return;
@@ -122,17 +132,27 @@ export function AccountModal({
     setFamilyShareError("");
     try {
       const saved = await api.saveAccountShare({
-        email,
+        email: familyShareForm.inviteType === "EMAIL" ? familyShareForm.email.trim() : "",
+        telegramUsername: familyShareForm.inviteType === "TELEGRAM" ? familyShareForm.telegramUsername.trim() : "",
         accessLevel: familyShareForm.accessLevel,
         canManageSharing: familyShareForm.canManageSharing,
         portfolioIds: familyShareForm.allPortfolios ? [] : familyShareForm.portfolioIds,
         ownerUserId: managedOwnerId,
       });
       setFamilyShares((current) => {
-        const withoutExisting = current.filter((share) => share.id !== saved.id && share.email?.toLowerCase() !== saved.email?.toLowerCase());
+        const savedKey = shareTargetKey(saved);
+        const withoutExisting = current.filter((share) => share.id !== saved.id && shareTargetKey(share) !== savedKey);
         return [saved, ...withoutExisting];
       });
-      setFamilyShareForm({email: "", accessLevel: "READ", canManageSharing: false, allPortfolios: true, portfolioIds: []});
+      setFamilyShareForm((current) => ({
+        ...current,
+        email: "",
+        telegramUsername: "",
+        accessLevel: "READ",
+        canManageSharing: false,
+        allPortfolios: true,
+        portfolioIds: []
+      }));
       setAuditEvents(await api.getAccountAudit());
       await onFamilyAccessChanged?.();
     } catch (error) {
@@ -187,6 +207,16 @@ export function AccountModal({
     return `${share.portfolioIds.length} selected portfolio${share.portfolioIds.length === 1 ? "" : "s"}`;
   }
 
+  function shareTargetKey(share) {
+    return share.telegramUsername
+      ? `tg:${String(share.telegramUsername).toLowerCase().replace(/^@+/, "")}`
+      : `email:${String(share.email || "").toLowerCase()}`;
+  }
+
+  function shareTargetLabel(share) {
+    return share.telegramUsername ? `@${String(share.telegramUsername).replace(/^@+/, "")}` : share.email;
+  }
+
   return (
     <ModalSheet onClose={onClose} subtitle="Manage how this account works across browser and Telegram." title="Account">
       <div className="account-stack">
@@ -205,7 +235,7 @@ export function AccountModal({
         <section className="account-panel">
           <p className="eyebrow">FAMILY ACCESS</p>
           <h4>Share this account</h4>
-          <p className="account-copy">Give another user access to all portfolios or selected portfolios. Share the invite link after creating access; the invited user must sign in with that email and accept it.</p>
+          <p className="account-copy">Give another user access to all portfolios or selected portfolios. Email access is accepted through an invite link. Telegram access works for users who already signed in with Telegram.</p>
           {managedAccounts.length > 1 ? (
             <label className="auth-field">
               <span>Manage sharing for</span>
@@ -218,13 +248,37 @@ export function AccountModal({
           ) : null}
           <div className="account-share-form">
             <label className="auth-field">
-              <span>User email</span>
-              <input
-                type="email"
-                placeholder="family@example.com"
-                value={familyShareForm.email}
-                onChange={(e) => setFamilyShareForm((current) => ({...current, email: e.target.value}))}
-              />
+              <span>Share via</span>
+              <select
+                value={familyShareForm.inviteType}
+                onChange={(e) => setFamilyShareForm((current) => ({
+                  ...current,
+                  inviteType: e.target.value,
+                  email: "",
+                  telegramUsername: ""
+                }))}
+              >
+                <option value="EMAIL">Email</option>
+                <option value="TELEGRAM">Telegram</option>
+              </select>
+            </label>
+            <label className="auth-field">
+              <span>{familyShareForm.inviteType === "TELEGRAM" ? "Telegram username" : "User email"}</span>
+              {familyShareForm.inviteType === "TELEGRAM" ? (
+                <input
+                  type="text"
+                  placeholder="@family_member"
+                  value={familyShareForm.telegramUsername}
+                  onChange={(e) => setFamilyShareForm((current) => ({...current, telegramUsername: e.target.value}))}
+                />
+              ) : (
+                <input
+                  type="email"
+                  placeholder="family@example.com"
+                  value={familyShareForm.email}
+                  onChange={(e) => setFamilyShareForm((current) => ({...current, email: e.target.value}))}
+                />
+              )}
             </label>
             <label className="auth-field">
               <span>Access</span>
@@ -236,7 +290,7 @@ export function AccountModal({
                 <option value="FULL">Full access</option>
               </select>
             </label>
-            <button className="primary" disabled={familyShareBusy || !familyShareForm.email.trim() || !hasPortfolioScopeSelection} onClick={saveFamilyShare} type="button">
+            <button className="primary" disabled={familyShareBusy || !shareTargetValue || !hasPortfolioScopeSelection} onClick={saveFamilyShare} type="button">
               {familyShareBusy ? "Saving..." : "Grant access"}
             </button>
           </div>
@@ -273,7 +327,7 @@ export function AccountModal({
             {familyShares.length ? familyShares.map((share) => (
               <div className="account-share-row" key={share.id}>
                 <div>
-                  <strong>{share.email}</strong>
+                  <strong>{shareTargetLabel(share)}</strong>
                   <span>{share.status === "ACTIVE" ? "Active user" : "Pending acceptance"} | {share.accessLevel === "FULL" ? "Full access" : "Read only"} | {scopeLabel(share)}{share.canManageSharing ? " | Can manage sharing" : ""}</span>
                 </div>
                 <div className="account-share-row-actions">
