@@ -95,19 +95,34 @@ function renderOuterNameLabel({cx, cy, midAngle, outerRadius, name, percent, cha
   const sy = cy + (outerRadius + 2) * sin;
   const mx = cx + (outerRadius + (compact ? 14 : 22)) * cos;
   const my = cy + (outerRadius + (compact ? 18 : 28)) * sin;
-  const rawEx = mx + (cos >= 0 ? lineSpan : -lineSpan);
-  const ex = compact ? Math.max(sidePadding, Math.min(chartWidth - sidePadding, rawEx)) : rawEx;
-  const ey = my;
-  const textAnchor = compact ? "start" : (cos >= 0 ? "start" : "end");
-  const rawTextX = ex + (cos >= 0 ? 4 : -4);
-  const textX = compact
-    ? (cos >= 0 ? Math.min(chartWidth - sidePadding, ex + 4) : Math.max(sidePadding, ex + 4))
-    : rawTextX;
   const currentPctLabel = `${(percent * 100).toFixed(1)}%`;
   const hasPlanPct = planPct !== null && planPct !== undefined && Number.isFinite(Number(planPct));
   const planLabel = hasPlanPct
     ? `[${pctPlain(Number(planPct), Number(planPct) % 1 === 0 ? 0 : 1)}]`
     : null;
+  const chartSafeWidth = Number.isFinite(chartWidth) && chartWidth > 0 ? chartWidth : (Number.isFinite(cx) ? cx * 2 : 360);
+  const longestLineLength = Math.max(
+    String(name).length,
+    `${currentPctLabel}${!compact && planLabel ? ` ${planLabel}` : ""}`.length,
+    compact && planLabel ? String(planLabel).length : 0
+  );
+  const textWidthEstimate = compact
+    ? Math.max(42, longestLineLength * 6.4)
+    : Math.max(56, longestLineLength * 7.2);
+  const textAnchor = compact ? "start" : (cos >= 0 ? "start" : "end");
+  const rawEx = mx + (cos >= 0 ? lineSpan : -lineSpan);
+  const rawTextX = compact ? rawEx + 4 : rawEx + (cos >= 0 ? 4 : -4);
+  const minTextX = compact
+    ? sidePadding
+    : (cos >= 0 ? sidePadding : sidePadding + textWidthEstimate);
+  const maxTextX = compact
+    ? Math.max(sidePadding, chartSafeWidth - sidePadding - textWidthEstimate)
+    : (cos >= 0 ? chartSafeWidth - sidePadding - textWidthEstimate : chartSafeWidth - sidePadding);
+  const textX = Math.max(minTextX, Math.min(maxTextX, rawTextX));
+  const ex = compact
+    ? textX - 4
+    : (cos >= 0 ? textX - 6 : textX + 6);
+  const ey = my;
   return (
     <g>
       <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="#9aaccc" fill="none" />
@@ -138,7 +153,7 @@ function AllocationPie({items, showPlanPct = false}) {
   if (!items.length) return <div className="allocation-legend-empty">No active allocation data.</div>;
   const labelRenderer = (props) => renderOuterNameLabel({
     ...props,
-    chartWidth: compactLabels ? 300 : 360,
+    chartWidth: Number.isFinite(props?.cx) ? props.cx * 2 : (compactLabels ? 320 : 660),
     compact: compactLabels,
     planPct: showPlanPct ? props.payload?.planPct : null,
   });
