@@ -5,6 +5,7 @@ import {AccountModal} from "./AccountModal";
 import {ConfirmModal} from "./ConfirmModal";
 import {PositionModal} from "./PositionModal";
 import {TransactionModal} from "./TransactionModal";
+import {TransactionUploadModal} from "./TransactionUploadModal";
 
 export function AppModals({
   activeRawPositions,
@@ -22,6 +23,7 @@ export function AppModals({
   onCreatePortfolio,
   onCreatePosition,
   onCreateTransaction,
+  onUploadTransactions,
   onDeletePortfolio,
   onDeletePosition,
   onDeleteTransaction,
@@ -39,6 +41,7 @@ export function AppModals({
   positionModalPositions,
   positionModalPositionsByPortfolio,
   portfolioId,
+  portfolioName,
   selectedPortfolioIds,
   telegramLinkCode,
   onTelegramLinkCodeChange,
@@ -135,6 +138,15 @@ export function AppModals({
           portfolioLocked={modalPortfolioLocked}
           portfolioOptions={modalPortfolioOptions}
           transaction={modal?.type === "transaction" ? modal.data : null}
+        />
+      ) : null}
+      {modal === "transaction-upload" ? (
+        <TransactionUploadModal
+          onClose={onClose}
+          onSubmit={onUploadTransactions}
+          portfolioId={portfolioId}
+          portfolioName={portfolioName}
+          positions={activeRawPositions}
         />
       ) : null}
       {modal?.type === "edit-position" ? (

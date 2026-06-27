@@ -6,6 +6,7 @@ export function AppHeaderMiddle({
   canWritePortfolio,
   onAddPosition,
   onAddTransaction,
+  onUploadTransactions,
   onOpenPortfolioSwitch,
   selectedPortfolioName,
 }) {
@@ -16,6 +17,7 @@ export function AppHeaderMiddle({
       hasPortfolio={hasPortfolio}
       onAddPosition={onAddPosition}
       onAddTransaction={onAddTransaction}
+      onUploadTransactions={onUploadTransactions}
       onOpenPortfolioSwitch={onOpenPortfolioSwitch}
       selectedPortfolioName={selectedPortfolioName}
       visible

@@ -136,6 +136,7 @@ function App() {
     handleCreatePortfolio,
     handleCreatePosition,
     handleCreateTransaction,
+    handleUploadTransactions,
     handleDeletePortfolio,
     handleDeletePosition,
     handleDeleteTransaction,
@@ -376,6 +377,14 @@ function App() {
     }
     setPositionsSubtab("transactions");
     setModal("transaction");
+  };
+  const handleTransactionUploadModal = () => {
+    if (!canWriteSelectedPortfolio) {
+      setError("This shared portfolio is read-only.");
+      return;
+    }
+    setPositionsSubtab("transactions");
+    setModal("transaction-upload");
   };
   const handleApplyPortfolioSelection = (nextSelectedIds) => {
     applyPortfolioSelection(nextSelectedIds);
@@ -636,6 +645,7 @@ function App() {
             onAccount={handleWorkspaceAccountModal}
             onAddPosition={handlePositionCreateModal}
             onAddTransaction={handleTransactionCreateModal}
+            onUploadTransactions={handleTransactionUploadModal}
             onPositionAddTransaction={workspaceAddTransactionHandler}
             onCreateWatch={() => setModal("watchlist")}
             onDeletePortfolio={(portfolio) => setModal({type: "delete-portfolio", data: portfolio})}
@@ -730,6 +740,7 @@ function App() {
         onAccount={handleWorkspaceAccountModal}
         onAddPosition={handlePositionCreateModal}
         onAddTransaction={handleTransactionCreateModal}
+        onUploadTransactions={handleTransactionUploadModal}
         onPositionAddTransaction={workspaceAddTransactionHandler}
         onCreateWatch={() => setModal("watchlist")}
         onDeletePortfolio={(portfolio) => setModal({type: "delete-portfolio", data: portfolio})}
@@ -798,6 +809,7 @@ function App() {
         onCreatePortfolio={handleCreatePortfolio}
         onCreatePosition={handleCreatePosition}
         onCreateTransaction={handleCreateTransaction}
+        onUploadTransactions={handleUploadTransactions}
         onDeletePortfolio={handleDeletePortfolio}
         onDeletePosition={handleDeletePosition}
         onDeleteTransaction={handleDeleteTransaction}
@@ -811,6 +823,7 @@ function App() {
         onRenamePortfolio={handleRenamePortfolio}
         onApplyPortfolioSelection={handleApplyPortfolioSelection}
         portfolioId={portfolioId}
+        portfolioName={selectedPortfolio?.name || topMenuPortfolioLabel || ""}
         portfolioOptions={portfolios}
         portfolios={portfolios}
         positionModalPositions={rawPositions}

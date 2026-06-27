@@ -40,6 +40,7 @@ export function AppWorkspaceContent(props) {
     onAccount,
     onAddPosition,
     onAddTransaction,
+    onUploadTransactions,
     onPositionAddTransaction,
     onCreateWatch,
     onDeletePortfolio,
@@ -96,6 +97,7 @@ export function AppWorkspaceContent(props) {
               canWritePortfolio={canWriteSelectedPortfolio}
               onAddPosition={onAddPosition}
               onAddTransaction={onAddTransaction}
+              onUploadTransactions={onUploadTransactions}
               onOpenPortfolioSwitch={onOpenPortfolioSwitch}
               selectedPortfolioName={topMenuPortfolioLabel}
             />
@@ -110,6 +112,7 @@ export function AppWorkspaceContent(props) {
           canWritePortfolio={canWriteSelectedPortfolio}
           onAddPosition={onAddPosition}
           onAddTransaction={onAddTransaction}
+          onUploadTransactions={onUploadTransactions}
           onOpenPortfolioSwitch={onOpenPortfolioSwitch}
           selectedPortfolioName={topMenuPortfolioLabel}
           visible={showTopBar}

@@ -6,6 +6,7 @@ export function TopMenuBar({
   canWritePortfolio = true,
   onAddPosition,
   onAddTransaction,
+  onUploadTransactions,
   onOpenPortfolioSwitch,
   selectedPortfolioName,
   visible = true,
@@ -45,6 +46,17 @@ export function TopMenuBar({
             <span aria-hidden="true" className="top-menu-action-icon">🧾</span>
             <span className="top-menu-action-label top-menu-action-label-desktop">Add Transaction</span>
             <span className="top-menu-action-label top-menu-action-label-mobile">Txn</span>
+          </button>
+          <button
+            aria-label="Upload transactions"
+            className="top-menu-action-button"
+            disabled={!hasPortfolio || !canWritePortfolio}
+            onClick={onUploadTransactions}
+            title={!canWritePortfolio ? "Read-only shared portfolio" : "Upload transactions"}
+            type="button"
+          >
+            <span aria-hidden="true" className="top-menu-action-icon">⬆️</span>
+            <span className="top-menu-action-label">Upload</span>
           </button>
         </div>
       </div>

@@ -105,6 +105,45 @@ export function usePortfolioCrud({
     setModal(null);
   }
 
+  async function handleUploadTransactions(payload) {
+    const targetPortfolioId = targetPortfolioIdFrom(payload?.portfolioId);
+    if (!targetPortfolioId) return;
+    onError("");
+
+    const targetPositions = positionsForPortfolio(targetPortfolioId);
+    const existingTickers = new Set(
+      targetPositions.map((position) => String(position.ticker || "").trim().toUpperCase()).filter(Boolean)
+    );
+
+    for (const positionPayload of payload?.positionsToCreate || []) {
+      const normalizedTicker = String(positionPayload?.ticker || "").trim().toUpperCase();
+      if (!normalizedTicker || existingTickers.has(normalizedTicker)) continue;
+      await api.createPositionWithAdjustments(targetPortfolioId, {
+        ...positionPayload,
+        ticker: normalizedTicker,
+        includeInAllocation: false,
+        targetAllocationPct: 0,
+      }, []);
+      existingTickers.add(normalizedTicker);
+    }
+
+    const sortedTransactions = [...(payload?.transactions || [])].sort((left, right) => {
+      const leftDate = String(left?.date || "");
+      const rightDate = String(right?.date || "");
+      if (leftDate === rightDate) return 0;
+      return leftDate.localeCompare(rightDate);
+    });
+
+    for (const transaction of sortedTransactions) {
+      const {portfolioId: _ignoredPortfolioId, ...persistedPayload} = transaction;
+      await api.createTransaction(targetPortfolioId, persistedPayload);
+    }
+
+    await refreshAfterPortfolioMutation(targetPortfolioId);
+    onAfterTransactionMutation?.();
+    setModal(null);
+  }
+
   async function handleEditPosition(payload) {
     const targetPortfolioId = targetPortfolioIdFrom(payload?.portfolioId);
     const targetPositions = positionsForPortfolio(targetPortfolioId);
@@ -206,6 +245,7 @@ export function usePortfolioCrud({
     handleCreatePortfolio,
     handleCreatePosition,
     handleCreateTransaction,
+    handleUploadTransactions,
     handleDeletePortfolio,
     handleDeletePosition,
     handleDeleteTransaction,
