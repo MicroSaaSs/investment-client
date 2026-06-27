@@ -67,6 +67,10 @@ export function TransactionUploadModal({
           <span>Use these columns: <code>{TRANSACTION_IMPORT_HEADERS.join(", ")}</code></span>
           <span>`date`, `ticker`, and `type` are required. `BUY` and `SELL` need `shares` and `price`. `DIVIDEND`, `FEE`, `DEPOSIT`, and `WITHDRAWAL` need `amount`.</span>
           <span>`positionType` is optional and supports `STOCK`, `CRYPTO`, `CASH`, `CASH_ETF`.</span>
+          <span>Example with 2 records:</span>
+          <pre className="transaction-upload-example">{`date,ticker,type,shares,price,fees,amount,company,positionType,note
+2026-06-10,AAPL,BUY,10,205.45,1.00,,Apple Inc,STOCK,Initial buy
+2026-06-14,CASH-USD,DEPOSIT,,,,5000,Uninvested cash,CASH,Funding account`}</pre>
         </div>
 
         <label className="modal-grid-full transaction-upload-picker">
