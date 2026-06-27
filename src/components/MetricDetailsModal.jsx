@@ -1,6 +1,7 @@
 import React from "react";
 import {ModalSheet} from "./ModalSheet";
 import {money, pct, shortDate} from "../utils/format";
+import { positionPnlToneClass } from "../utils/positionTone";
 
 function SignalBadge({signal}) {
   const normalized = signal || "HOLD";
@@ -15,7 +16,7 @@ function PositionMiniRow({position, mode}) {
   };
 
   return (
-    <div className={`metric-detail-row metric-detail-row-${mode}`}>
+    <div className={`metric-detail-row metric-detail-row-${mode} ${positionPnlToneClass(position)}`}>
       <div className="metric-detail-company">
         <div className="metric-detail-title">
           <strong>{position.ticker}</strong>

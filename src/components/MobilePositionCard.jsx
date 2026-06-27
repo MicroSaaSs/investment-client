@@ -1,5 +1,6 @@
 import React from "react";
 import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
+import { positionPnlToneClass } from "../utils/positionTone";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
 import { buildManualOrderIds, moveManualOrderItem, sortPositions } from "../utils/positionSort";
@@ -437,7 +438,7 @@ export function MobilePositionCard({
 
   return (
     <article
-      className={`mobile-card mobile-card-position mobile-position-card${expanded ? " is-expanded" : ""}${dropTarget ? " is-drop-target" : ""}${portfolioName && !expanded ? " has-portfolio-hint" : ""}`}
+      className={`mobile-card mobile-card-position mobile-position-card ${positionPnlToneClass(position)}${expanded ? " is-expanded" : ""}${dropTarget ? " is-drop-target" : ""}${portfolioName && !expanded ? " has-portfolio-hint" : ""}`}
       draggable={draggable}
       onDragOver={onDragOver}
       onDragStart={onDragStart}

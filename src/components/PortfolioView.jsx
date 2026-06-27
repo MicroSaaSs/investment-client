@@ -1,5 +1,6 @@
 import React from "react";
 import { compactMoney, money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
+import { positionPnlToneClass } from "../utils/positionTone";
 import { ModalSheet } from "./ModalSheet";
 import { getPositionSummaryMetricConfig, MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { PortfolioBar } from "./PortfolioBar";
@@ -360,7 +361,7 @@ export function PortfolioView({
                       <div className="portfolio-bar-summary-list">
                         {group.activePositions.map((position) => (
                           <button
-                            className={`portfolio-bar-position${dropTargetId === position.id ? " is-drop-target" : ""}`}
+                            className={`portfolio-bar-position ${positionPnlToneClass(position)}${dropTargetId === position.id ? " is-drop-target" : ""}`}
                             draggable={!multiPortfolioMode && group.writable}
                             onDragEnd={() => {
                               setDragPositionId(null);

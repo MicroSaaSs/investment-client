@@ -1,5 +1,6 @@
 import React from "react";
 import { money, pct, pctMagnitude, pctNegative, pctPlain, shortDate, sourceLabel } from "../utils/format";
+import { positionPnlToneClass } from "../utils/positionTone";
 import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryMetricControl } from "./MobilePositionCard";
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
@@ -412,6 +413,7 @@ export function PositionsView({
             <tbody>
               {sortedPositions.map((position) => (
                 <tr
+                  className={positionPnlToneClass(position)}
                   draggable={canReorderPositions}
                   key={`${position.portfolioContextId || position.portfolioId || "portfolio"}:${position.id}`}
                   title={portfolioHint(position) ? `Portfolio: ${portfolioHint(position)}` : undefined}

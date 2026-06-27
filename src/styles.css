@@ -1382,6 +1382,26 @@ button {
 .portfolio-preview-panel .portfolio-bar-position-values span {
   font-size: 11px;
 }
+.portfolio-preview-panel .portfolio-bar-position.position-tone-positive,
+.portfolio-preview-mobile-list .mobile-position-card.position-tone-positive {
+  background: linear-gradient(
+    135deg,
+    rgba(236, 251, 241, 0.99),
+    rgba(204, 242, 216, 0.96)
+  );
+  border-color: rgba(25, 125, 67, 0.28);
+  box-shadow: inset 4px 0 0 #1f9a55, var(--shadow-soft);
+}
+.portfolio-preview-panel .portfolio-bar-position.position-tone-negative,
+.portfolio-preview-mobile-list .mobile-position-card.position-tone-negative {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 244, 245, 0.99),
+    rgba(247, 208, 212, 0.96)
+  );
+  border-color: rgba(176, 60, 71, 0.28);
+  box-shadow: inset 4px 0 0 #c3504c, var(--shadow-soft);
+}
 .watchlist-empty {
   display: grid;
   place-items: center;
@@ -2162,10 +2182,13 @@ tbody td > small {
   font-weight: 800;
   letter-spacing: 0.08em;
 }
-.signal-buy1,
+.signal-buy1 {
+  background: #dfeadb;
+  color: #4d6f50;
+}
 .signal-buy2 {
-  background: #def7e9;
-  color: #197148;
+  background: #c9f5d8;
+  color: #0f7a3a;
 }
 .signal-hold {
   background: #e9edf4;
@@ -2195,6 +2218,32 @@ tbody td > small {
   background: transparent;
   color: inherit;
   font: inherit;
+}
+.positions-desktop-table tbody tr.position-tone-positive td {
+  background: rgba(201, 245, 216, 0.42);
+}
+.positions-desktop-table tbody tr.position-tone-negative td {
+  background: rgba(248, 214, 217, 0.52);
+}
+.portfolio-bar-position.position-tone-positive,
+.mobile-position-card.position-tone-positive,
+.metric-detail-row.position-tone-positive {
+  background: linear-gradient(
+    180deg,
+    rgba(244, 252, 247, 0.98),
+    rgba(225, 245, 232, 0.94)
+  );
+  border-color: rgba(45, 138, 79, 0.18);
+}
+.portfolio-bar-position.position-tone-negative,
+.mobile-position-card.position-tone-negative,
+.metric-detail-row.position-tone-negative {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 249, 249, 0.98),
+    rgba(249, 229, 231, 0.94)
+  );
+  border-color: rgba(183, 66, 74, 0.18);
 }
 .row-actions-mobile {
   margin-top: 14px;
