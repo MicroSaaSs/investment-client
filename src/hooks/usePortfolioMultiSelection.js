@@ -84,12 +84,15 @@ export function usePortfolioMultiSelection({
   }
 
   function selectPrimaryPortfolio(nextPortfolioId) {
-    if (!nextPortfolioId || nextPortfolioId === portfolioId) return;
-    const validSelection = selectedPortfolioIds.filter((id) => portfolios.some((portfolio) => portfolio.id === id));
-    setPortfolioId(nextPortfolioId);
-    if (tab === "portfolios" || tab === "positions") {
+    if (!nextPortfolioId) return;
+    const nextSelectedIds = [nextPortfolioId];
+    setSelectedPortfolioIds(nextSelectedIds);
+    if (nextPortfolioId !== portfolioId) {
+      setPortfolioId(nextPortfolioId);
+    }
+    if (["dashboard", "portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(tab)) {
       syncPrimaryFromCache(nextPortfolioId);
-      ensurePortfolioTabSelectionLoaded(validSelection.length ? validSelection : [nextPortfolioId], nextPortfolioId);
+      ensurePortfolioTabSelectionLoaded(nextSelectedIds, nextPortfolioId);
     }
   }
 
@@ -98,14 +101,14 @@ export function usePortfolioMultiSelection({
       (Array.isArray(nextPortfolioIds) ? nextPortfolioIds : [])
         .filter((id) => portfolios.some((portfolio) => portfolio.id === id))
     );
-    const resolvedPrimaryId = nextPrimaryId && portfolios.some((portfolio) => portfolio.id === nextPrimaryId)
+    const resolvedPrimaryId = normalizedIds.includes(nextPrimaryId)
       ? nextPrimaryId
-      : (portfolioId || portfolios[0]?.id || "");
+      : (normalizedIds[0] || (portfolioId && portfolios.some((portfolio) => portfolio.id === portfolioId) ? portfolioId : portfolios[0]?.id || ""));
     setSelectedPortfolioIds(normalizedIds);
     if (resolvedPrimaryId && resolvedPrimaryId !== portfolioId) {
       setPortfolioId(resolvedPrimaryId);
     }
-    if (tab === "portfolios" || tab === "positions") {
+    if (["dashboard", "portfolios", "positions", "watchlist", "news", "avg-drawdown"].includes(tab)) {
       syncPrimaryFromCache(resolvedPrimaryId);
       ensurePortfolioTabSelectionLoaded(normalizedIds.length ? normalizedIds : [resolvedPrimaryId], resolvedPrimaryId);
     }
