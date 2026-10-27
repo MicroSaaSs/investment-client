@@ -5,6 +5,7 @@ import { MobilePositionCard, normalizePositionSummaryMetricIds, PositionSummaryM
 import { ModalSheet } from "./ModalSheet";
 import { TrashIcon } from "./icons/TrashIcon";
 import { buildManualOrderIds, moveItemAfter, moveItemBefore, moveManualOrderItem, sortPositions } from "../utils/positionSort";
+import { sortTransactions, TRANSACTION_SORT_COLUMNS } from "../utils/transactionSort";
 
 function companyLabel(position) {
   if (position?.type === "CASH") return "Uninvested cash";
@@ -174,6 +175,7 @@ export function PositionsView({
 }) {
   const dragPositionIdRef = React.useRef(null);
   const [expandedMobileCard, setExpandedMobileCard] = React.useState(null);
+  const [transactionSort, setTransactionSort] = React.useState({ column: "date", direction: "desc" });
   const [showColumnsPicker, setShowColumnsPicker] = React.useState(false);
   const [dragPositionId, setDragPositionId] = React.useState(null);
   const [draftOrderIds, setDraftOrderIds] = React.useState(() => buildManualOrderIds(positions));
@@ -208,9 +210,22 @@ export function PositionsView({
     return [...picked, ...missing];
   }, [draftOrderIds, positionsById, sortedPositions]);
   const visibleTransactions = React.useMemo(
-    () => (transactions || []).filter((transaction) => !isAutoCashTransferTransaction(transaction)),
-    [transactions]
+    () => sortTransactions(
+      (transactions || []).filter((transaction) => !isAutoCashTransferTransaction(transaction)),
+      transactionSort.column,
+      transactionSort.direction
+    ),
+    [transactions, transactionSort]
   );
+
+  function changeTransactionSort(column) {
+    setTransactionSort((current) => ({
+      column,
+      direction: current.column === column
+        ? (current.direction === "asc" ? "desc" : "asc")
+        : (column === "date" ? "desc" : "asc"),
+    }));
+  }
 
   const toggleColumn = React.useCallback((columnId) => {
     setVisibleColumns((current) => {
@@ -511,6 +526,24 @@ export function PositionsView({
                   <td className="table-center">
                     <div className="row-actions row-actions-center">
                       <button
+                        aria-label={`Add transaction for ${position.ticker}`}
+                        className="toolbar-icon-button"
+                        disabled={!canWriteItem(position) || !onAddTransaction}
+                        onClick={() => onAddTransaction(position)}
+                        title={canWriteItem(position) ? "Add transaction" : "Read-only shared portfolio"}
+                        type="button"
+                      >
+                        <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 24 24" width="20">
+                          <path
+                            d="M14 21H5V3h14v9M8 7h8M8 11h5M8 15h3M18 15v6M15 18h6"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                        </svg>
+                      </button>
+                      <button
                         aria-label={`Edit ${position.ticker} holding`}
                         className="toolbar-icon-button"
                         disabled={!canWriteItem(position)}
@@ -591,12 +624,29 @@ export function PositionsView({
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Ticker</th>
-                <th>Type</th>
-                <th className="table-center">Shares</th>
-                <th className="table-center">Price</th>
-                <th className="table-center">Fees</th>
+                {TRANSACTION_SORT_COLUMNS.map((column) => (
+                  <th
+                    aria-sort={transactionSort.column === column.id
+                      ? (transactionSort.direction === "asc" ? "ascending" : "descending")
+                      : "none"}
+                    className={column.numeric ? "table-center" : undefined}
+                    key={column.id}
+                  >
+                    <button
+                      className="transaction-sort-button"
+                      onClick={() => changeTransactionSort(column.id)}
+                      title={`Sort by ${column.label.toLowerCase()}`}
+                      type="button"
+                    >
+                      {column.label}
+                      <span aria-hidden="true">
+                        {transactionSort.column === column.id
+                          ? (transactionSort.direction === "asc" ? "↑" : "↓")
+                          : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                ))}
                 <th className="table-center">Actions</th>
               </tr>
             </thead>
@@ -621,6 +671,29 @@ export function PositionsView({
           </table>
         </div>
         <div className="mobile-list">
+          <div className="transaction-sort-controls">
+            <label>
+              Sort by
+              <select
+                onChange={(event) => changeTransactionSort(event.target.value)}
+                value={transactionSort.column}
+              >
+                {TRANSACTION_SORT_COLUMNS.map((column) => (
+                  <option key={column.id} value={column.id}>{column.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Order
+              <select
+                onChange={(event) => setTransactionSort((current) => ({ ...current, direction: event.target.value }))}
+                value={transactionSort.direction}
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </label>
+          </div>
           {visibleTransactions.map((transaction) => (
             <article className="mobile-card mobile-card-transaction" key={`${transaction.portfolioContextId || transaction.portfolioId || "portfolio"}:${transaction.id}`}>
               <div className="mobile-card-top">
