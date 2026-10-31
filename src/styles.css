@@ -3608,6 +3608,43 @@ tbody td > small {
   border: 1px solid #f6c6cc;
 }
 
+.app-status-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+}
+.app-status-card {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  width: min(440px, 100%);
+  padding: 36px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--paper-soft);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+.app-status-card h1,
+.app-status-card p {
+  margin: 0;
+}
+.app-status-card h1 {
+  font-size: clamp(24px, 6vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+.app-status-description {
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.app-status-card button {
+  min-height: 44px;
+}
+
 .app-loading-overlay {
   display: flex;
   align-items: center;

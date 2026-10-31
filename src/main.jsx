@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {createRoot} from "react-dom/client";
 import {AuthScreen} from "./components/AuthScreen";
+import {AppStatusScreen} from "./components/AppStatusScreen";
 import {AppModals} from "./components/AppModals";
 import {DEFAULT_NEWS_FILTERS} from "./constants/appConstants";
 import {useAiWorkspace} from "./hooks/useAiWorkspace";
@@ -40,6 +41,7 @@ function App() {
     portfolioTabDataById,
     portfolios,
     portfoliosBusy,
+    portfoliosLoaded,
     rawPositions,
     refreshEquityHistory,
     refreshNews,
@@ -55,6 +57,7 @@ function App() {
     setTransactions,
     transactions,
     workspaceBusy,
+    workspaceLoadError,
   } = useWorkspaceData({
     equityMode,
     equityRange,
@@ -65,6 +68,7 @@ function App() {
     authForm,
     authMode,
     createTelegramLinkCode,
+    connectionError,
     currentUser,
     emailLinkForm,
     handleEmailLink,
@@ -76,6 +80,7 @@ function App() {
     logout: runLogout,
     setAuthMode,
     setTelegramLinkCode,
+    sessionExpired,
     showLogout,
     submitAuth,
     telegramLinkCode,
@@ -88,6 +93,8 @@ function App() {
     onError: setError,
     onLogoutCleanup: () => {
       resetWorkspaceData();
+      resetAiWorkspace();
+      setSelectedPortfolioIds([]);
       setModal(null);
     },
     telegramInitData,
@@ -408,8 +415,6 @@ function App() {
   const handlePortfolioSwitchModal = () => setModal("switch-portfolio");
   const handleWorkspaceAccountModal = () => setModal("account");
   const logout = () => {
-    resetAiWorkspace();
-    setSelectedPortfolioIds([]);
     runLogout();
   };
 
@@ -594,6 +599,14 @@ function App() {
     setModal({type: "edit-position", data: positionSourceForPortfolio(position, contextPortfolioId)});
   };
 
+  if (connectionError) {
+    return <AppStatusScreen title="Connection interrupted" description={connectionError} onRetry={() => window.location.reload()} />;
+  }
+
+  if (authBusy) {
+    return <AppStatusScreen title="Opening your portfolio" description="Checking your session and loading your workspace." loading />;
+  }
+
   if (!isAuthenticated) {
     return (
       <AuthScreen
@@ -610,105 +623,17 @@ function App() {
         onSubmit={submitAuth}
         onTelegramLinkCodeChange={setTelegramLinkCode}
         telegramLinkCode={telegramLinkCode}
+        sessionExpired={sessionExpired}
       />
     );
   }
 
-  if (dataBusy) {
-    return (
-      <div className="app-shell">
-        <div className="app">
-          <AppWorkspaceContent
-            aiSettings={aiSettings}
-            aiSettingsBusy={aiSettingsBusy}
-            aiSummary={aiSummary}
-            aiSummaryBusy={aiSummaryBusy}
-            avgDrawdownPositions={avgDrawdownPositions}
-            canWritePortfolio={canWritePortfolio}
-            canWriteSelectedPortfolio={canWriteSelectedPortfolio}
-            currentUser={currentUser}
-            effectiveSelectedPortfolioIds={effectiveSelectedPortfolioIds}
-            equityHistory={equityHistory}
-            equityHistoryBusy={equityHistoryBusy}
-            equityMode={equityMode}
-            equityRange={equityRange}
-            error={error}
-            fetchAiSummary={() => fetchAiSummary(selectedPortfolio?.name || "")}
-            onOpenCreatePortfolio={handleCreatePortfolioModal}
-            handleTabChange={handleTabChange}
-            holdingsPositionSummaryMetrics={holdingsPositionSummaryMetrics}
-            metrics={metrics}
-            dashboardMetrics={dashboardMetrics}
-            news={news}
-            newsBusy={newsBusy}
-            newsFilters={newsFilters}
-            onAccount={handleWorkspaceAccountModal}
-            onAddPosition={handlePositionCreateModal}
-            onAddTransaction={handleTransactionCreateModal}
-            onUploadTransactions={handleTransactionUploadModal}
-            onPositionAddTransaction={workspaceAddTransactionHandler}
-            onCreateWatch={() => setModal("watchlist")}
-            onDeletePortfolio={(portfolio) => setModal({type: "delete-portfolio", data: portfolio})}
-            onDeletePosition={workspaceDeletePositionHandler}
-            onDeleteTransaction={workspaceDeleteTransactionHandler}
-            onEditPosition={workspaceEditPositionHandler}
-            onEditTransaction={workspaceEditTransactionHandler}
-            onEquityModeChange={setEquityMode}
-            onEquityRangeChange={setEquityRange}
-            onLogout={logout}
-            onNewsRefresh={(nextFilters = {}) => refreshNews(selectedHoldingPortfolioIds, {
-              filters: {
-                ticker: nextFilters.ticker || newsFilters.ticker,
-                period: nextFilters.period || newsFilters.period,
-              },
-            }).catch((e) => setError(String(e.message || e)))}
-            onOpenPortfolioSwitch={handlePortfolioSwitchModal}
-            onApplyPortfolioSelection={handleApplyPortfolioSelection}
-            onPortfolioPositionSummaryMetricsChange={(nextMetricIds) => updatePositionSummaryMetrics("portfolio", nextMetricIds)}
-            onPortfolioRename={(portfolio) => setModal({type: "rename-portfolio", data: portfolio})}
-            onPortfolioSelect={selectPrimaryPortfolio}
-            onPositionsSubtabChange={setPositionsSubtab}
-            onReorderPositions={reorderPositions}
-            onSaveAiSettings={saveAiSettings}
-            onSettingsChange={updateAiSetting}
-            onTransactionFromPortfolio={portfolioTabTransactionHandler}
-            onWatchDelete={workspaceDeletePositionHandler}
-            onWorkspacePortfolioDeletePosition={portfolioTabDeletePositionHandler}
-            onWorkspacePortfolioEditPosition={portfolioTabEditPositionHandler}
-            portfolioId={portfolioId}
-            portfolioName={topMenuPortfolioLabel || selectedPortfolio?.name || ""}
-            portfolioPositionSummaryMetrics={portfolioPositionSummaryMetrics}
-            portfolioTabBusy={portfolioTabBusy}
-            portfolioTabDataById={portfolioTabDataById}
-            portfolios={portfolios}
-            positions={holdingsPositions}
-            positionsSubtab={positionsSubtab}
-            rawPositions={rawPositions}
-            selectedAiHasInvestedPosition={selectedAiHasInvestedPosition}
-            selectedPortfolio={selectedPortfolio}
-            showBottomNav={showBottomNav}
-            showLogout={showLogout}
-            showTopBar={showTopBar}
-            summaryBusy={false}
-            tab={tab}
-            tickers={tickers}
-            topMenuPortfolioLabel={topMenuPortfolioLabel}
-            transactions={holdingsTransactions}
-            updatePositionSummaryMetrics={updatePositionSummaryMetrics}
-            watchlistPositions={selectedWatchlistPositions}
-          />
-          <div className="app-loading-screen" role="status" aria-live="polite">
-            <div className="app-loading-screen-card">
-              <div className="app-loading-spinner app-loading-spinner-large" />
-              <div className="app-loading-copy">
-                <strong>Loading portfolio data</strong>
-                <span>Fetching portfolios, prices, transactions, and analytics.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (workspaceLoadError) {
+    return <AppStatusScreen title="Unable to load your portfolio" description="Your portfolio could not be loaded. Please try again." onRetry={() => window.location.reload()} />;
+  }
+
+  if (dataBusy || !portfoliosLoaded || (portfolios.length > 0 && !portfolioTabDataById[portfolioId])) {
+    return <AppStatusScreen title="Loading your portfolio" description="Getting your positions, transactions, and market data ready." loading />;
   }
 
   return (

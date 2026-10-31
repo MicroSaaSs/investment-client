@@ -14,6 +14,7 @@ export function AuthScreen({
   telegramLinkCode,
   onTelegramLinkCodeChange,
   onTelegramLogin,
+  sessionExpired = false,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const ctaLabel = authMode === "register" ? "Create account" : "Log in";
@@ -24,8 +25,10 @@ export function AuthScreen({
         <section className="auth-card auth-card-telegram">
           <div className="auth-telegram-direct">
             <p className="eyebrow">TELEGRAM MINI APP</p>
-            <h1>Continue with Telegram</h1>
-            <p>We detected your Telegram Mini App session and will sign you in directly.</p>
+            <h1>{sessionExpired ? "Session expired" : "Continue with Telegram"}</h1>
+            <p>{sessionExpired
+              ? "Sign in again to continue. If Telegram cannot verify your session, close and reopen the Mini App."
+              : "Sign in with Telegram to open your portfolio."}</p>
             <button className="primary auth-submit" disabled={authBusy} onClick={onTelegramLogin} type="button">
               {authBusy ? "Signing you in..." : "Continue with Telegram"}
             </button>

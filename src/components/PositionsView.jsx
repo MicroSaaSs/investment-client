@@ -55,16 +55,16 @@ function transactionSummary(transaction) {
   if (["DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"].includes(type)) {
     const parts = [
       transaction.date,
-      money(amount, 0),
+      money(amount, 2),
     ];
     return parts.join(" · ");
   }
   const parts = [
     transaction.date,
-    money(transaction.price, 0),
+    money(transaction.price, 8),
   ];
   if (Number(transaction.fees || 0)) {
-    parts.push(`${money(transaction.fees, 0)} fees`);
+    parts.push(`${money(transaction.fees, 2)} fees`);
   }
   return parts.join(" · ");
 }
@@ -657,7 +657,7 @@ export function PositionsView({
                   <td>{transaction.ticker}</td>
                   <td>{transactionTypeLabel(transaction)}</td>
                   <td className="table-center">{Number(transaction.shares || 0).toLocaleString()}</td>
-                  <td className="table-center">{money(transaction.price, 2)}</td>
+                  <td className="table-center">{money(transaction.price, 8)}</td>
                   <td className="table-center">{money(transaction.fees, 2)}</td>
                   <td className="table-center">
                     <div className="row-actions row-actions-center">

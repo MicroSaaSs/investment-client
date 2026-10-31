@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
+import {normalizeDecimalInput} from "../utils/decimalInput";
 
 const DEFAULT_FORM = {
   ticker: "",
@@ -78,7 +79,7 @@ function normalizeMonthsValue(value, fallback) {
 
 function sanitizeNumericInput(value, {allowNegative = false, allowDecimal = false} = {}) {
   if (!value) return "";
-  let next = String(value).replace(allowDecimal ? /[^0-9.-]/g : /[^0-9-]/g, "");
+  let next = normalizeDecimalInput(value).replace(allowDecimal ? /[^0-9.-]/g : /[^0-9-]/g, "");
   if (!allowNegative) next = next.replace(/-/g, "");
   else {
     const negative = next.startsWith("-") ? "-" : "";

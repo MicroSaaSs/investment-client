@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {ModalSheet} from "./ModalSheet";
+import {normalizeDecimalInput, parseDecimalInput} from "../utils/decimalInput";
 
 const AMOUNT_TRANSACTION_TYPES = new Set(["DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"]);
 const CASH_TRANSACTION_OPTIONS = [
@@ -106,6 +107,7 @@ export function TransactionModal({
     return positionsByPortfolio[selectedPortfolioId] || [];
   }, [positions, positionsByPortfolio, selectedPortfolioId]);
   const [form, setForm] = useState(buildForm(transaction, scopedPositions, today));
+  const [validationError, setValidationError] = useState("");
   const selectedPosition = scopedPositions.find((position) => position.ticker === form.ticker);
   const isCashPosition = isCashBucketPosition(selectedPosition);
   const normalizedType = normalizeTransactionType(form.type, isCashPosition);
@@ -151,7 +153,9 @@ export function TransactionModal({
   }, [scopedPositions, transaction?.ticker]);
 
   function update(key, value) {
-    setForm((current) => ({...current, [key]: value}));
+    setValidationError("");
+    const nextValue = ["shares", "price", "fees", "amount"].includes(key) ? normalizeDecimalInput(value) : value;
+    setForm((current) => ({...current, [key]: nextValue}));
   }
 
   function handlePortfolioChange(nextPortfolioId) {
@@ -178,10 +182,14 @@ export function TransactionModal({
   function handleSubmit(event) {
     event.preventDefault();
     if (!form.ticker.trim()) return;
-    const amount = Number(form.amount || 0);
-    const shares = isCashPosition || isAmountType ? amount : Number(form.shares || 0);
-    const price = isCashPosition || isAmountType ? 0 : Number(form.price || 0);
-    const fees = isCashPosition || isAmountType ? 0 : Number(form.fees || 0);
+    const amount = parseDecimalInput(form.amount);
+    const shares = isCashPosition || isAmountType ? amount : parseDecimalInput(form.shares);
+    const price = isCashPosition || isAmountType ? 0 : parseDecimalInput(form.price);
+    const fees = isCashPosition || isAmountType ? 0 : parseDecimalInput(form.fees);
+    if (![shares, price, fees].every((value) => Number.isFinite(value) && value >= 0)) {
+      setValidationError("Enter valid, non-negative numbers. You can use a dot or comma for decimals.");
+      return;
+    }
     const notional = Number(shares || 0) * Number(price || 0);
     const selectedCashBucket = cashBuckets.find((position) => position.id === form.cashBucketId) || null;
     const cashTransferAmount = (() => {
@@ -198,6 +206,10 @@ export function TransactionModal({
           return 0;
       }
     })();
+    if (!Number.isFinite(notional) || !Number.isFinite(cashTransferAmount)) {
+      setValidationError("The transaction amount is too large. Check shares, price, and fees.");
+      return;
+    }
     onSubmit({
       id: transaction?.id,
       portfolioId: selectedPortfolioId || defaultPortfolioId,
@@ -306,6 +318,7 @@ export function TransactionModal({
           <span>Date</span>
           <input type="date" value={form.date} onChange={(e) => update("date", e.target.value)} />
         </label>
+        {validationError ? <div className="error modal-actions-wide" role="alert">{validationError}</div> : null}
         <div className="modal-actions modal-actions-wide">
           <button className="ghost" onClick={onClose} type="button">Cancel</button>
           <button className="primary" type="submit">{mode === "edit" ? "Save changes" : "Save transaction"}</button>

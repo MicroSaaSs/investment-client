@@ -12,6 +12,8 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
   const [portfolios, setPortfolios] = useState([]);
   const [portfolioId, setPortfolioId] = useState("");
   const [portfoliosBusy, setPortfoliosBusy] = useState(false);
+  const [portfoliosLoaded, setPortfoliosLoaded] = useState(false);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState("");
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
   const [portfolioTabBusy, setPortfolioTabBusy] = useState(false);
   const [rawPositions, setRawPositions] = useState([]);
@@ -26,6 +28,8 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
   const equityHistoryRequestRef = useRef({controller: null, key: ""});
   const equityHistoryCacheRef = useRef(new Map());
   const portfolioTabRequestRef = useRef({requestId: 0});
+  const workspaceGenerationRef = useRef(0);
+  const baseRequestRef = useRef(0);
 
   useEffect(() => {
     if (!portfolioId) return;
@@ -33,29 +37,40 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
   }, [portfolioId]);
 
   const loadPortfolios = useCallback(async function loadPortfolios() {
+    const generation = workspaceGenerationRef.current;
     setPortfoliosBusy(true);
+    setWorkspaceLoadError("");
     try {
       const list = await api.getPortfolios();
+      if (workspaceGenerationRef.current !== generation) return [];
       setPortfolios(list);
+      setPortfoliosLoaded(true);
       setPortfolioId((current) => {
         if (list.some((portfolio) => portfolio.id === current)) return current;
         return list[0]?.id || "";
       });
       return list;
+    } catch (error) {
+      if (workspaceGenerationRef.current === generation) setWorkspaceLoadError(String(error.message || error));
+      throw error;
     } finally {
-      setPortfoliosBusy(false);
+      if (workspaceGenerationRef.current === generation) setPortfoliosBusy(false);
     }
   }, []);
 
   async function refreshPortfolioBaseData(id = portfolioId) {
     if (!id) return;
+    const generation = workspaceGenerationRef.current;
+    const requestId = ++baseRequestRef.current;
     setWorkspaceBusy(true);
+    setWorkspaceLoadError("");
     try {
       const [portfolioMetrics, portfolioPositions, portfolioTransactions] = await Promise.all([
         api.getMetrics(id),
         api.getPositions(id),
         api.getTransactions(id),
       ]);
+      if (workspaceGenerationRef.current !== generation || baseRequestRef.current !== requestId) return;
       startTransition(() => {
         setMetrics(portfolioMetrics || null);
         setRawPositions(portfolioPositions || []);
@@ -69,18 +84,25 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
           },
         }));
       });
+    } catch (error) {
+      if (workspaceGenerationRef.current === generation && baseRequestRef.current === requestId) {
+        setWorkspaceLoadError(String(error.message || error));
+      }
+      throw error;
     } finally {
-      setWorkspaceBusy(false);
+      if (workspaceGenerationRef.current === generation && baseRequestRef.current === requestId) setWorkspaceBusy(false);
     }
   }
 
   async function refreshPortfolioTabSnapshot(id) {
     if (!id) return;
+    const generation = workspaceGenerationRef.current;
     const [portfolioMetrics, portfolioPositions, portfolioTransactions] = await Promise.all([
       api.getMetrics(id),
       api.getPositions(id),
       api.getTransactions(id),
     ]);
+    if (workspaceGenerationRef.current !== generation) return;
     startTransition(() => {
       setPortfolioTabDataById((current) => ({
         ...current,
@@ -126,7 +148,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
         ids.map((portfolioId) => api.getEquityCurve(portfolioId, range, mode, {signal: controller.signal}))
       );
       const history = mergeEquityHistoryResponses(responses, range, mode);
-      if (equityHistoryRequestRef.current.key !== requestKey) return;
+      if (equityHistoryRequestRef.current.controller !== controller || controller.signal.aborted) return;
       equityHistoryCacheRef.current.set(requestKey, history || null);
       startTransition(() => {
         setEquityHistory(history || null);
@@ -135,7 +157,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
       if (controller.signal.aborted) return;
       throw error;
     } finally {
-      if (equityHistoryRequestRef.current.key === requestKey) {
+      if (equityHistoryRequestRef.current.controller === controller) {
         setEquityHistoryBusy(false);
       }
     }
@@ -237,6 +259,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
   }
 
   async function refreshNews(id = portfolioId, options = {}) {
+    const generation = workspaceGenerationRef.current;
     const ids = [...new Set((Array.isArray(id) ? id : [id]).filter(Boolean))];
     if (!ids.length) return;
     const {auto = false} = options;
@@ -251,6 +274,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
     setNewsBusy(true);
     try {
       const responses = await Promise.all(ids.map((portfolioId) => api.getNews(portfolioId, nextFilters.ticker, nextFilters.period)));
+      if (workspaceGenerationRef.current !== generation) return;
       const payload = mergeNewsResponses(responses);
       newsAutoRequestState.set(requestKey, "loaded");
       startTransition(() => {
@@ -261,7 +285,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
       if (auto) newsAutoRequestState.set(requestKey, "failed");
       throw error;
     } finally {
-      setNewsBusy(false);
+      if (workspaceGenerationRef.current === generation) setNewsBusy(false);
     }
   }
 
@@ -331,12 +355,18 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
   }
 
   function resetWorkspaceData() {
+    workspaceGenerationRef.current += 1;
+    baseRequestRef.current += 1;
+    portfolioTabRequestRef.current.requestId += 1;
     if (equityHistoryRequestRef.current.controller) {
       equityHistoryRequestRef.current.controller.abort();
     }
+    equityHistoryRequestRef.current = {controller: null, key: ""};
     equityHistoryCacheRef.current.clear();
     newsAutoRequestState.clear();
     setPortfolios([]);
+    setPortfoliosLoaded(false);
+    setWorkspaceLoadError("");
     setPortfolioId("");
     setRawPositions([]);
     setTransactions([]);
@@ -347,6 +377,8 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
     setNewsFilters(DEFAULT_NEWS_FILTERS);
     setPortfolioTabBusy(false);
     setWorkspaceBusy(false);
+    setEquityHistoryBusy(false);
+    setNewsBusy(false);
     setPortfoliosBusy(false);
   }
 
@@ -364,6 +396,7 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
     portfolioTabDataById,
     portfolios,
     portfoliosBusy,
+    portfoliosLoaded,
     rawPositions,
     refreshEquityHistory,
     refreshNews,
@@ -382,5 +415,6 @@ export function useWorkspaceData({equityMode, equityRange, onError}) {
     setTransactions,
     transactions,
     workspaceBusy,
+    workspaceLoadError,
   };
 }

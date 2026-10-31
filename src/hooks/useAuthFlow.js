@@ -18,10 +18,13 @@ export function useAuthFlow({
   const [telegramLinkCode, setTelegramLinkCode] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [linkSession, setLinkSession] = useState(null);
+  const [connectionError, setConnectionError] = useState(() => window.navigator.onLine === false ? "You are offline. Check your internet connection and try again." : "");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const telegramAutoLoginAttempted = useRef(false);
   const loadPortfoliosRef = useRef(loadPortfolios);
   const onErrorRef = useRef(onError);
-  const isAuthenticated = Boolean(api.getToken());
+  const onLogoutCleanupRef = useRef(onLogoutCleanup);
+  const isAuthenticated = Boolean(currentUser && api.getToken());
   const isTelegramMiniApp = Boolean(telegramInitData);
   const showLogout = !isTelegramMiniApp && Boolean(currentUser);
 
@@ -34,35 +37,62 @@ export function useAuthFlow({
   }, [onError]);
 
   useEffect(() => {
+    onLogoutCleanupRef.current = onLogoutCleanup;
+  }, [onLogoutCleanup]);
+
+  useEffect(() => {
+    const unsubscribe = api.subscribeToFailures(({type}) => {
+      if (type === "session-expired") {
+        setCurrentUser(null);
+        setSessionExpired(true);
+        setLinkSession(null);
+        onLogoutCleanupRef.current?.();
+        onErrorRef.current("Your session has expired. Please sign in again.");
+      } else if (type === "connection") {
+        setConnectionError("We could not connect to the service. Check your connection and try again.");
+      }
+    });
+    const handleOffline = () => setConnectionError("You are offline. Check your internet connection and try again.");
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     async function boot() {
       setAuthBusy(true);
       try {
         window.Telegram?.WebApp?.ready?.();
         if (api.getToken()) {
+          let user;
           try {
-            const user = await api.getCurrentUser();
+            user = await api.getCurrentUser();
+          } catch (tokenError) {
+            if (tokenError.status !== 401) throw tokenError;
+            if (!telegramInitData) throw tokenError;
+          }
+          if (user) {
             setCurrentUser(user);
+            setSessionExpired(false);
             await acceptShareInviteFromUrl();
             await loadPortfoliosRef.current();
             return;
-          } catch (tokenError) {
-            api.setToken("");
-            setCurrentUser(null);
-            if (!telegramInitData) {
-              throw tokenError;
-            }
           }
         }
         if (telegramInitData && !telegramAutoLoginAttempted.current) {
           telegramAutoLoginAttempted.current = true;
           const authResponse = await authTelegramWithRetry(telegramInitData);
           setCurrentUser(authResponse);
+          setSessionExpired(false);
+          setConnectionError("");
           onErrorRef.current("");
           await acceptShareInviteFromUrl();
           await loadPortfoliosRef.current();
         }
       } catch (error) {
-        api.setToken("");
+        if (error.status === 401) api.setToken("");
         setCurrentUser(null);
         onErrorRef.current(telegramInitData ? humanizeTelegramAuthError(error) : String(error.message || error));
       } finally {
@@ -73,7 +103,7 @@ export function useAuthFlow({
   }, [telegramInitData]);
 
   useEffect(() => {
-    if (isAuthenticated || telegramInitData || !googleClientId) return;
+    if (authBusy || isAuthenticated || telegramInitData || !googleClientId) return;
     let cancelled = false;
 
     async function waitForGoogle() {
@@ -93,6 +123,7 @@ export function useAuthFlow({
           try {
             const authResponse = await api.authGoogle(response.credential);
             setCurrentUser(authResponse);
+            setSessionExpired(false);
             await acceptShareInviteFromUrl();
             await loadPortfoliosRef.current();
           } catch (error) {
@@ -119,7 +150,7 @@ export function useAuthFlow({
     return () => {
       cancelled = true;
     };
-  }, [googleClientId, isAuthenticated, telegramInitData]);
+  }, [authBusy, googleClientId, isAuthenticated, telegramInitData]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -146,6 +177,7 @@ export function useAuthFlow({
         ? await api.register(authForm)
         : await api.login({email: authForm.email, password: authForm.password});
       setCurrentUser(authResponse);
+      setSessionExpired(false);
       await acceptShareInviteFromUrl();
       await loadPortfolios();
     } catch (error) {
@@ -183,6 +215,7 @@ export function useAuthFlow({
         ? await api.linkTelegram(telegramInitData, telegramLinkCode.trim())
         : await authTelegramWithRetry(telegramInitData);
       setCurrentUser(authResponse);
+      setSessionExpired(false);
       setTelegramLinkCode("");
       await acceptShareInviteFromUrl();
       await loadPortfolios();
@@ -256,6 +289,7 @@ export function useAuthFlow({
     api.setToken("");
     window.google?.accounts?.id?.disableAutoSelect?.();
     setCurrentUser(null);
+    setSessionExpired(false);
     setAuthBusy(false);
     setLinkSession(null);
     setTelegramLinkCode("");
@@ -286,6 +320,7 @@ export function useAuthFlow({
     authForm,
     authMode,
     createTelegramLinkCode,
+    connectionError,
     currentUser,
     emailLinkForm,
     handleEmailLink,
@@ -297,6 +332,7 @@ export function useAuthFlow({
     logout,
     setAuthMode,
     setTelegramLinkCode,
+    sessionExpired,
     showLogout,
     submitAuth,
     telegramLinkCode,

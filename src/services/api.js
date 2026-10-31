@@ -1,28 +1,66 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 const TOKEN_KEY = "investment-platform-token";
 let token = window.localStorage.getItem(TOKEN_KEY) || "";
+const failureListeners = new Set();
+const PUBLIC_AUTH_PATHS = new Set([
+  "/api/auth/register", "/api/auth/login", "/api/auth/google", "/api/auth/telegram",
+]);
+
+function notifyFailure(type, error) {
+  failureListeners.forEach((listener) => listener({type, error}));
+}
 
 async function request(path, options = {}) {
+  const requestToken = token;
   const headers = {"Content-Type": "application/json", ...(options.headers || {})};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE_URL}${path}`, {...options, headers});
-  const text = await response.text();
-  if (!response.ok) {
-    try {
-      const payload = text ? JSON.parse(text) : null;
-      throw new Error(payload?.message || payload?.error || payload?.reason || `${response.status} ${response.statusText}`);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(text || `${response.status} ${response.statusText}`);
+  if (requestToken) headers.Authorization = `Bearer ${requestToken}`;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  let timedOut = false;
+  if (options.signal?.aborted) controller.abort();
+  options.signal?.addEventListener("abort", abort, {once: true});
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 30000);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {...options, headers, signal: controller.signal});
+    const text = await response.text();
+    if (!response.ok) {
+      let payload;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch {
+        // Proxies can return plain text or HTML instead of an API error.
       }
+      const error = new Error(payload?.message || payload?.error || payload?.reason || `${response.status} ${response.statusText}`);
+      error.status = response.status;
       throw error;
     }
+    if (response.status === 204) return null;
+    return text ? JSON.parse(text) : null;
+  } catch (cause) {
+    const error = timedOut ? new Error("The connection timed out. Please try again.") : cause;
+    const isCurrentSession = requestToken === token;
+    if (error.status === 401 && requestToken && isCurrentSession && !PUBLIC_AUTH_PATHS.has(path)) {
+      api.setToken("");
+      notifyFailure("session-expired", error);
+    } else if (!options.signal?.aborted && (timedOut || error instanceof TypeError || error.status >= 500)) {
+      error.isConnectionError = true;
+      if (isCurrentSession) notifyFailure("connection", error);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abort);
   }
-  if (response.status === 204) return null;
-  return text ? JSON.parse(text) : null;
 }
 
 export const api = {
+  subscribeToFailures(listener) {
+    failureListeners.add(listener);
+    return () => failureListeners.delete(listener);
+  },
   setToken(value) {
     token = value || "";
     if (token) window.localStorage.setItem(TOKEN_KEY, token);
