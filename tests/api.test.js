@@ -44,6 +44,20 @@ test("expired protected sessions clear the token and notify the application", as
   assert.equal(failures[0].type, "session-expired");
 });
 
+test("unauthorized responses log out immediately even when the response body cannot be read", async () => {
+  globalThis.fetch = async () => ({status: 401, text: async () => { throw new TypeError("Body connection lost"); }});
+  await assert.rejects(api.getTransactions("p1"), {status: 401});
+  assert.equal(api.getToken(), "");
+  assert.deepEqual(failures.map(({type}) => type), ["session-expired"]);
+});
+
+test("unauthorized protected requests trigger logout even when the token is already missing", async () => {
+  api.setToken("");
+  globalThis.fetch = async () => response(401);
+  await assert.rejects(api.getMetrics("p1"), {status: 401});
+  assert.equal(failures[0].type, "session-expired");
+});
+
 test("read-only permissions and rejected logins do not invalidate the current session", async () => {
   globalThis.fetch = async () => response(403);
   await assert.rejects(api.getPortfolios(), {status: 403});

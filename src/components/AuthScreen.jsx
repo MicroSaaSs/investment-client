@@ -82,7 +82,7 @@ export function AuthScreen({
               <div className="auth-email-heading">
                 <div>
                   <p className="eyebrow">EMAIL ACCESS</p>
-                  <h2>{authMode === "register" ? "Create your account" : "Log in with email"}</h2>
+                  <h2>{authMode === "register" ? "Create your account" : sessionExpired ? "Sign in again" : "Log in with email"}</h2>
                 </div>
                 <div className="auth-switch">
                   <button className={authMode === "login" ? "active" : ""} onClick={() => onAuthModeChange("login")} type="button">Log in</button>

@@ -4,6 +4,7 @@ let token = window.localStorage.getItem(TOKEN_KEY) || "";
 const failureListeners = new Set();
 const PUBLIC_AUTH_PATHS = new Set([
   "/api/auth/register", "/api/auth/login", "/api/auth/google", "/api/auth/telegram",
+  "/api/auth/telegram/link",
 ]);
 
 function notifyFailure(type, error) {
@@ -25,6 +26,13 @@ async function request(path, options = {}) {
   }, 30000);
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {...options, headers, signal: controller.signal});
+    if (response.status === 401 && requestToken === token && !PUBLIC_AUTH_PATHS.has(path)) {
+      const error = new Error("Your session has expired. Please sign in again.");
+      error.status = 401;
+      api.setToken("");
+      notifyFailure("session-expired", error);
+      throw error;
+    }
     const text = await response.text();
     if (!response.ok) {
       let payload;
@@ -42,10 +50,7 @@ async function request(path, options = {}) {
   } catch (cause) {
     const error = timedOut ? new Error("The connection timed out. Please try again.") : cause;
     const isCurrentSession = requestToken === token;
-    if (error.status === 401 && requestToken && isCurrentSession && !PUBLIC_AUTH_PATHS.has(path)) {
-      api.setToken("");
-      notifyFailure("session-expired", error);
-    } else if (!options.signal?.aborted && (timedOut || error instanceof TypeError || error.status >= 500)) {
+    if (!options.signal?.aborted && (timedOut || error instanceof TypeError || error.status >= 500)) {
       error.isConnectionError = true;
       if (isCurrentSession) notifyFailure("connection", error);
     }

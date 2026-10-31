@@ -43,11 +43,7 @@ export function useAuthFlow({
   useEffect(() => {
     const unsubscribe = api.subscribeToFailures(({type}) => {
       if (type === "session-expired") {
-        setCurrentUser(null);
-        setSessionExpired(true);
-        setLinkSession(null);
-        onLogoutCleanupRef.current?.();
-        onErrorRef.current("Your session has expired. Please sign in again.");
+        clearSession(true);
       } else if (type === "connection") {
         setConnectionError("We could not connect to the service. Check your connection and try again.");
       }
@@ -82,6 +78,7 @@ export function useAuthFlow({
           }
         }
         if (telegramInitData && !telegramAutoLoginAttempted.current) {
+          setAuthBusy(true);
           telegramAutoLoginAttempted.current = true;
           const authResponse = await authTelegramWithRetry(telegramInitData);
           setCurrentUser(authResponse);
@@ -285,18 +282,25 @@ export function useAuthFlow({
     }
   }
 
-  function logout() {
+  function clearSession(expired = false) {
     api.setToken("");
     window.google?.accounts?.id?.disableAutoSelect?.();
     setCurrentUser(null);
-    setSessionExpired(false);
+    setSessionExpired(expired);
     setAuthBusy(false);
+    setConnectionError("");
     setLinkSession(null);
     setTelegramLinkCode("");
     setEmailLinkForm(DEFAULT_EMAIL_LINK_FORM);
+    setAuthForm(DEFAULT_AUTH_FORM);
+    setAuthMode("login");
     onAuthenticated?.(null);
-    onError("");
-    onLogoutCleanup?.();
+    onErrorRef.current(expired ? "Your session has expired. Please sign in again." : "");
+    onLogoutCleanupRef.current?.();
+  }
+
+  function logout() {
+    clearSession();
   }
 
   async function acceptShareInviteFromUrl() {

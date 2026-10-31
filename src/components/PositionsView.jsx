@@ -57,16 +57,17 @@ function transactionSummary(transaction) {
       transaction.date,
       money(amount, 2),
     ];
-    return parts.join(" · ");
+    return parts.join(" • ");
   }
   const parts = [
     transaction.date,
+    Number(transaction.shares || 0).toLocaleString(undefined, {maximumFractionDigits: 20}),
     money(transaction.price, 8),
   ];
   if (Number(transaction.fees || 0)) {
     parts.push(`${money(transaction.fees, 2)} fees`);
   }
-  return parts.join(" · ");
+  return parts.join(" • ");
 }
 
 function autoCashTransferLabel(transaction) {
